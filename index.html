@@ -1,0 +1,2780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>AssoHub — Membership & Association Management</title>
+<link rel="manifest" href="data:application/json,{}">
+<meta name="theme-color" content="#3D5AFE">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
+<style>
+/* ============ DESIGN TOKENS ============ */
+:root{
+  --ink:#14171F;
+  --ink-soft:#4A4F5C;
+  --ink-faint:#8A8F9C;
+  --paper:#FAFAF8;
+  --paper-raised:#FFFFFF;
+  --brand:#3D5AFE;
+  --brand-dark:#2A3FCC;
+  --brand-light:#EEF0FF;
+  --accent:#FF6B4A;
+  --accent-light:#FFEEE9;
+  --success:#1FAA59;
+  --success-light:#E8F8EE;
+  --warn:#E5A923;
+  --warn-light:#FDF4E1;
+  --danger:#E5484D;
+  --danger-light:#FDEAEA;
+  --line:#E8E6E0;
+  --line-soft:#F1EFE9;
+  --shadow-sm: 0 1px 2px rgba(20,23,31,0.04), 0 1px 1px rgba(20,23,31,0.03);
+  --shadow-md: 0 4px 12px rgba(20,23,31,0.06), 0 2px 4px rgba(20,23,31,0.04);
+  --shadow-lg: 0 12px 32px rgba(20,23,31,0.10), 0 4px 8px rgba(20,23,31,0.04);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  font-size: 15px;
+  line-height: 1.5;
+}
+img{max-width:100%; display:block;}
+button{font-family:inherit; cursor:pointer;}
+input,select,textarea{font-family:inherit; font-size:inherit;}
+a{color:inherit; text-decoration:none;}
+::-webkit-scrollbar{width:10px; height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#D8D5CC; border-radius:10px;}
+::-webkit-scrollbar-thumb:hover{background:#C5C1B5;}
+:focus-visible{outline:2px solid var(--brand); outline-offset:2px; border-radius:4px;}
+
+.serif{ font-family: var(--font-display); }
+.mono{ font-family: var(--font-mono); }
+
+/* ============ UTILITY ============ */
+.app{display:none; min-height:100vh;}
+.app.active{display:block;}
+.hidden{display:none !important;}
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:11px 20px; border-radius:10px; border:none; font-weight:600; font-size:14px;
+  transition: all .15s ease; white-space:nowrap;
+}
+.btn-primary{ background:var(--brand); color:#fff; box-shadow: var(--shadow-sm); }
+.btn-primary:hover{ background:var(--brand-dark); transform:translateY(-1px); box-shadow:var(--shadow-md); }
+.btn-secondary{ background:var(--paper-raised); color:var(--ink); border:1px solid var(--line); }
+.btn-secondary:hover{ border-color:var(--ink-faint); }
+.btn-ghost{ background:transparent; color:var(--ink-soft); }
+.btn-ghost:hover{ background:var(--line-soft); color:var(--ink); }
+.btn-danger{ background:var(--danger-light); color:var(--danger); }
+.btn-danger:hover{ background:var(--danger); color:#fff; }
+.btn-sm{ padding:7px 14px; font-size:13px; border-radius:8px; }
+.btn-lg{ padding:14px 28px; font-size:15px; border-radius:12px; }
+.btn:disabled{ opacity:.5; cursor:not-allowed; transform:none !important; }
+.btn-icon{ width:36px; height:36px; padding:0; border-radius:8px; }
+
+.card{ background:var(--paper-raised); border:1px solid var(--line); border-radius:var(--radius-md); box-shadow:var(--shadow-sm); }
+.pill{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:100px; font-size:12px; font-weight:600; }
+.pill-success{ background:var(--success-light); color:var(--success); }
+.pill-warn{ background:var(--warn-light); color:#9A7416; }
+.pill-danger{ background:var(--danger-light); color:var(--danger); }
+.pill-brand{ background:var(--brand-light); color:var(--brand); }
+.pill-neutral{ background:var(--line-soft); color:var(--ink-soft); }
+
+.field{ margin-bottom:16px; }
+.field label{ display:block; font-size:13px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; }
+.field input, .field select, .field textarea{
+  width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:9px;
+  background:var(--paper-raised); color:var(--ink); transition:border-color .15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus{ border-color:var(--brand); outline:none; }
+.field .hint{ font-size:12px; color:var(--ink-faint); margin-top:4px; }
+.field-row{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(20,23,31,0.45); backdrop-filter:blur(2px);
+  display:flex; align-items:center; justify-content:center; z-index:1000; padding:20px;
+  animation:fadeIn .15s ease;
+}
+@keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+.modal{
+  background:var(--paper-raised); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg);
+  width:100%; max-width:560px; max-height:90vh; overflow-y:auto; animation:slideUp .2s ease;
+}
+@keyframes slideUp{ from{opacity:0; transform:translateY(12px);} to{opacity:1; transform:translateY(0);} }
+.modal-header{ display:flex; align-items:center; justify-content:space-between; padding:22px 24px; border-bottom:1px solid var(--line-soft); }
+.modal-header h3{ font-family:var(--font-display); font-size:20px; font-weight:600; }
+.modal-body{ padding:24px; }
+.modal-footer{ display:flex; justify-content:flex-end; gap:10px; padding:18px 24px; border-top:1px solid var(--line-soft); }
+
+.toast-wrap{ position:fixed; bottom:24px; right:24px; z-index:2000; display:flex; flex-direction:column; gap:10px; }
+.toast{
+  background:var(--ink); color:#fff; padding:13px 18px; border-radius:10px; font-size:14px; font-weight:500;
+  box-shadow:var(--shadow-lg); display:flex; align-items:center; gap:10px; animation:toastIn .2s ease; max-width:340px;
+}
+.toast.success{ background:var(--success); }
+.toast.error{ background:var(--danger); }
+@keyframes toastIn{ from{opacity:0; transform:translateX(20px);} to{opacity:1; transform:translateX(0);} }
+
+.empty-state{ text-align:center; padding:60px 24px; color:var(--ink-faint); }
+.empty-state svg{ margin:0 auto 16px; opacity:.4; }
+.empty-state h4{ font-family:var(--font-display); font-size:18px; color:var(--ink-soft); margin-bottom:6px; }
+.empty-state p{ font-size:14px; max-width:320px; margin:0 auto; }
+
+table{ width:100%; border-collapse:collapse; }
+th{ text-align:left; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint); padding:10px 14px; border-bottom:1.5px solid var(--line); }
+td{ padding:13px 14px; border-bottom:1px solid var(--line-soft); font-size:14px; }
+tr:last-child td{ border-bottom:none; }
+tbody tr{ transition:background .1s; }
+tbody tr:hover{ background:var(--line-soft); }
+
+.avatar{
+  width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:13px; color:#fff; flex-shrink:0;
+}
+.loader{ width:18px; height:18px; border:2.5px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+.loader.dark{ border:2.5px solid var(--line); border-top-color:var(--brand); }
+@keyframes spin{ to{transform:rotate(360deg);} }
+
+@media(max-width:640px){
+  .field-row{ grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- LANDING PAGE -->
+<!-- ============================================================ -->
+<div id="view-landing" class="app active"></div>
+
+<!-- ============================================================ -->
+<!-- AUTH (Login / Signup) -->
+<!-- ============================================================ -->
+<div id="view-auth" class="app"></div>
+
+<!-- ============================================================ -->
+<!-- MAIN DASHBOARD APP SHELL -->
+<!-- ============================================================ -->
+<div id="view-dashboard" class="app"></div>
+
+<!-- ============================================================ -->
+<!-- PLATFORM ADMIN (Web3 Studio Tech internal — manages all orgs) -->
+<!-- ============================================================ -->
+<div id="view-platform-admin" class="app"></div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ============================================================
+   ASSOHUB — Core State & Utilities
+   ============================================================ */
+const DB_KEY = 'assohub_v1';
+const SESSION_KEY = 'assohub_session_v1';
+
+const ICONS = {
+  logo: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="8" fill="#3D5AFE"/><path d="M8 19V12L14 8L20 12V19" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 19V14.5H17V19" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  dashboard: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>`,
+  members: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  events: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
+  loyalty: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21l2-7.5L2 9h7l3-7z"/></svg>`,
+  accounting: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+  committee: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`,
+  settings: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+  plus: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  search: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  bell: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
+  chevDown: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+  logout: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
+  close: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  edit: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  trash: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
+  mail: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`,
+  phone: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+  download: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+  check: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  qr: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><line x1="14" y1="14" x2="14" y2="14.01"/><line x1="18" y1="14" x2="18" y2="14.01"/><line x1="14" y1="18" x2="14" y2="18.01"/><line x1="18" y1="18" x2="18" y2="18.01"/><line x1="21" y1="14" x2="21" y2="21"/><line x1="14" y1="21" x2="18" y2="21"/></svg>`,
+  users: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  calendar: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
+  trendUp: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
+  wallet: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>`,
+  star: `<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21l2-7.5L2 9h7l3-7z"/></svg>`,
+  arrowRight: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
+  building: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><line x1="9" y1="6" x2="9" y2="6.01"/><line x1="15" y1="6" x2="15" y2="6.01"/><line x1="9" y1="10" x2="9" y2="10.01"/><line x1="15" y1="10" x2="15" y2="10.01"/><line x1="9" y1="14" x2="9" y2="14.01"/><line x1="15" y1="14" x2="15" y2="14.01"/><line x1="9" y1="18" x2="15" y2="18"/></svg>`,
+  upload: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
+  filter: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>`,
+};
+function icon(name, cls=''){ return ICONS[name] || ''; }
+
+function uid(prefix=''){ return prefix + Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+function fmtMoney(n, cur='RM'){ const v = Number(n||0); return cur + ' ' + v.toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtDate(d){ if(!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('en-MY', {day:'2-digit', month:'short', year:'numeric'}); }
+function fmtDateShort(d){ if(!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('en-MY', {day:'2-digit', month:'short'}); }
+function timeAgo(d){
+  const diff = Date.now() - new Date(d).getTime();
+  const days = Math.floor(diff/86400000);
+  if(days===0) return 'Today';
+  if(days===1) return 'Yesterday';
+  if(days<7) return days+'d ago';
+  return fmtDate(d);
+}
+function daysUntil(d){ return Math.ceil((new Date(d).getTime() - Date.now())/86400000); }
+function initials(name){ return (name||'?').split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join(''); }
+function avatarColor(seed){
+  const colors = ['#3D5AFE','#FF6B4A','#1FAA59','#E5A923','#9C5FFF','#16A3B8','#E5484D','#5C6BC0'];
+  let hash = 0; for(let i=0;i<(seed||'').length;i++) hash = seed.charCodeAt(i) + ((hash<<5)-hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+function toast(msg, type=''){
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = (type==='success'?icon('check'):'') + `<span>${escapeHtml(msg)}</span>`;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateX(20px)'; el.style.transition='all .2s'; setTimeout(()=>el.remove(), 200); }, 3200);
+}
+
+/* ============================================================
+   QR CODE — generation (member card) + scanning (event check-in)
+   QR payload format: "assohub:member:{memberId}" — a permanent,
+   per-member identifier (not per-event). Scanning only looks up
+   the member; the scanner code decides what to do with that ID
+   (e.g. check them into whichever event is currently open).
+   ============================================================ */
+const QR_PREFIX = 'assohub:member:';
+
+function memberQRPayload(memberId){ return QR_PREFIX + memberId; }
+
+function parseMemberQRPayload(text){
+  if(typeof text !== 'string' || !text.startsWith(QR_PREFIX)) return null;
+  return text.slice(QR_PREFIX.length).trim() || null;
+}
+
+// Renders a QR code into the given element id. Requires qrcodejs (loaded via CDN in <head>).
+function renderMemberQRCode(elementId, memberId, size=120){
+  const el = document.getElementById(elementId);
+  if(!el) return;
+  el.innerHTML = '';
+  if(typeof QRCode === 'undefined'){
+    el.innerHTML = `<div style="font-size:11px; color:var(--ink-faint); padding:8px;">QR unavailable offline</div>`;
+    return;
+  }
+  try{
+    new QRCode(el, {
+      text: memberQRPayload(memberId),
+      width: size, height: size,
+      colorDark: '#14171F', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  } catch(e){
+    el.innerHTML = `<div style="font-size:11px; color:var(--danger); padding:8px;">QR error</div>`;
+  }
+}
+
+/* ---- Scanner: opens device camera, decodes frames with jsQR ---- */
+let _qrScanState = { stream:null, rafId:null, active:false, onResult:null };
+
+function openQRScannerModal(eventId){
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'qrScannerBackdrop';
+  backdrop.style.zIndex = 1100;
+  backdrop.innerHTML = `
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-header"><h3>Scan to Check In</h3><button class="btn-icon btn-ghost" onclick="closeQRScanner()">${icon('close')}</button></div>
+      <div class="modal-body">
+        <div id="qrScanStatus" style="font-size:13px; color:var(--ink-faint); margin-bottom:12px; text-align:center;">Requesting camera access…</div>
+        <div style="position:relative; border-radius:14px; overflow:hidden; background:#000; aspect-ratio:1/1;">
+          <video id="qrVideo" playsinline muted style="width:100%; height:100%; object-fit:cover; display:block;"></video>
+          <div style="position:absolute; inset:14%; border:2.5px solid rgba(255,255,255,.7); border-radius:16px; pointer-events:none;"></div>
+        </div>
+        <canvas id="qrCanvas" style="display:none;"></canvas>
+        <div id="qrScanResult" style="margin-top:14px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" style="width:100%;" onclick="closeQRScanner()">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  startQRScanner(eventId);
+}
+
+async function startQRScanner(eventId){
+  const statusEl = document.getElementById('qrScanStatus');
+  if(typeof jsQR === 'undefined'){
+    statusEl.textContent = 'QR scanning library unavailable. Check your connection and try again.';
+    statusEl.style.color = 'var(--danger)';
+    return;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    statusEl.textContent = 'Camera access is not supported in this browser.';
+    statusEl.style.color = 'var(--danger)';
+    return;
+  }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    _qrScanState.stream = stream;
+    _qrScanState.active = true;
+    const video = document.getElementById('qrVideo');
+    video.srcObject = stream;
+    await video.play();
+    statusEl.textContent = 'Point the camera at a member\'s QR code';
+    scanQRFrame(eventId);
+  } catch(e){
+    statusEl.textContent = 'Could not access camera. Check browser permissions and try again.';
+    statusEl.style.color = 'var(--danger)';
+  }
+}
+
+function scanQRFrame(eventId){
+  if(!_qrScanState.active) return;
+  const video = document.getElementById('qrVideo');
+  const canvas = document.getElementById('qrCanvas');
+  if(!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA){
+    _qrScanState.rafId = requestAnimationFrame(()=>scanQRFrame(eventId));
+    return;
+  }
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height);
+  if(code && code.data){
+    handleQRScanResult(code.data, eventId);
+    return; // pause scanning loop until result is handled
+  }
+  _qrScanState.rafId = requestAnimationFrame(()=>scanQRFrame(eventId));
+}
+
+function handleQRScanResult(rawText, eventId){
+  const org = currentOrg();
+  const memberId = parseMemberQRPayload(rawText);
+  const resultEl = document.getElementById('qrScanResult');
+  const statusEl = document.getElementById('qrScanStatus');
+
+  if(!memberId || !org.members[memberId]){
+    resultEl.innerHTML = `<div class="pill pill-danger" style="width:100%; justify-content:center; padding:10px;">Unrecognized QR code</div>`;
+    setTimeout(()=>{ resultEl.innerHTML=''; if(_qrScanState.active) scanQRFrame(eventId); }, 1500);
+    return;
+  }
+
+  const member = org.members[memberId];
+  const event = org.events[eventId];
+  const reg = event.registrations.find(r=>r.memberId===memberId);
+
+  if(!reg){
+    resultEl.innerHTML = `<div class="pill pill-warn" style="width:100%; justify-content:center; padding:10px;">${escapeHtml(member.name)} is not registered for this event</div>`;
+    setTimeout(()=>{ resultEl.innerHTML=''; if(_qrScanState.active) scanQRFrame(eventId); }, 1800);
+    return;
+  }
+
+  if(reg.checkedIn){
+    resultEl.innerHTML = `<div class="pill pill-neutral" style="width:100%; justify-content:center; padding:10px;">${escapeHtml(member.name)} already checked in</div>`;
+    setTimeout(()=>{ resultEl.innerHTML=''; if(_qrScanState.active) scanQRFrame(eventId); }, 1800);
+    return;
+  }
+
+  // Successful check-in (reuses the same logic/points award as manual check-in)
+  checkInMember(eventId, memberId);
+  resultEl.innerHTML = `<div class="pill pill-success" style="width:100%; justify-content:center; padding:10px;">${icon('check')} ${escapeHtml(member.name)} checked in</div>`;
+  if(navigator.vibrate) navigator.vibrate(80);
+  setTimeout(()=>{ resultEl.innerHTML=''; if(_qrScanState.active) scanQRFrame(eventId); }, 1400);
+}
+
+function closeQRScanner(){
+  _qrScanState.active = false;
+  if(_qrScanState.rafId) cancelAnimationFrame(_qrScanState.rafId);
+  if(_qrScanState.stream) _qrScanState.stream.getTracks().forEach(t=>t.stop());
+  _qrScanState = { stream:null, rafId:null, active:false, onResult:null };
+  closeModal('qrScannerBackdrop');
+}
+
+
+/* ============================================================
+   DATA LAYER (localStorage scaffold — Firestore-shaped)
+   Structure mirrors: /orgs/{orgId}/members, /events, /transactions, /committees, /loyaltyLog
+   ============================================================ */
+function loadDB(){
+  let db = JSON.parse(localStorage.getItem(DB_KEY) || 'null');
+  if(!db){ db = { orgs:{}, users:{} }; seedDemoData(db); saveDB(db); }
+  return db;
+}
+function saveDB(db){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+function getSession(){ return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }
+function setSession(s){ localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+function clearSession(){ localStorage.removeItem(SESSION_KEY); }
+
+let DB = loadDB();
+let SESSION = getSession();
+
+const SUBSCRIPTION_LABELS = {
+  active:    { label:'Active',    pill:'pill-success' },
+  reminder:  { label:'Payment Reminder', pill:'pill-brand' },
+  notice:    { label:'Payment Notice',   pill:'pill-warn' },
+  suspended: { label:'Suspended', pill:'pill-danger' },
+};
+
+function currentOrg(){ return SESSION ? DB.orgs[SESSION.orgId] : null; }
+function persist(){ saveDB(DB); }
+
+/* ============================================================
+   SEED DEMO DATA
+   ============================================================ */
+function seedDemoData(db){
+  const orgId = 'demo-chamber';
+  const tiers = [
+    { id:'platinum', name:'Platinum', color:'#14171F', priceYear:2500, benefits:'Boardroom access, 10 event passes, priority listing' },
+    { id:'gold', name:'Gold', color:'#B8860B', priceYear:1200, benefits:'5 event passes, newsletter feature' },
+    { id:'silver', name:'Silver', color:'#8A8F9C', priceYear:600, benefits:'2 event passes' },
+    { id:'standard', name:'Standard', color:'#3D5AFE', priceYear:250, benefits:'Member directory listing' },
+  ];
+  const memberNames = [
+    ['Tan Wei Ming','Sunway Logistics Sdn Bhd'], ['Siti Aishah Rahman','Aishah Consulting'],
+    ['Rajesh Kumar','KL Tech Ventures'], ['Lim Hui Yi','Hui Yi Design Studio'],
+    ['Mohd Faiz Hassan','Faiz Trading Co'], ['Chen Mei Ling','MeiLing Imports'],
+    ['Arjun Nair','Nair & Partners Law'], ['Nurul Izzah','Izzah Catering Group'],
+    ['Wong Kar Hoe','KH Engineering'], ['Priya Devi','Devi Pharma Supplies'],
+    ['Ahmad Zulkifli','Zul Construction'], ['Tan Sock Mei','Sock Mei Boutique'],
+    ['David Lee','Lee & Co Accountants'], ['Fatimah Zahra','Zahra Textiles'],
+    ['Kumar Selvam','Selvam Auto Parts'], ['Ong Bee Hua','Bee Hua Bakery'],
+    ['Hafiz Rahman','Rahman IT Solutions'], ['Carmen Tan','Tan Realty Group'],
+    ['Vincent Goh','Goh Freight Forwarding'], ['Aina Sofea','Sofea Events Co'],
+  ];
+  const members = {};
+  memberNames.forEach((m,i)=>{
+    const id = uid('mem_');
+    const tier = tiers[Math.min(Math.floor(i/5), 3)];
+    const joinDate = new Date(Date.now() - (200+i*30)*86400000).toISOString();
+    const expiryDate = new Date(Date.now() + (i%4===0 ? -10 : (200-i*8))*86400000).toISOString();
+    members[id] = {
+      id, name:m[0], company:m[1], email:m[0].toLowerCase().replace(/\s+/g,'.')+'@example.com',
+      phone:'+60 1'+(2+i%8)+'-'+(1000000+i*7919)%10000000,
+      tier: tier.id, status: expiryDate < new Date().toISOString() ? 'expired' : 'active',
+      joinDate, expiryDate, points: Math.floor(Math.random()*800)+50,
+      memberNo: 'CHM-' + String(1000+i),
+      notes:''
+    };
+  });
+
+  const events = {};
+  const eventDefs = [
+    ['Annual Gala Dinner 2026', 18, 'Grand Ballroom, Sunway Resort', 350, true],
+    ['SME Digitalization Workshop', -25, 'Chamber HQ, Level 5', 0, false],
+    ['Networking Night: F&B Sector', 5, 'Hilton KL Rooftop', 80, true],
+    ['Q1 Members Townhall', -60, 'Chamber HQ Auditorium', 0, false],
+    ['Trade Mission Briefing: Vietnam', 32, 'Online (Zoom)', 0, true],
+  ];
+  eventDefs.forEach(([title, dayOffset, loc, price, upcoming],i)=>{
+    const id = uid('evt_');
+    const date = new Date(Date.now()+dayOffset*86400000).toISOString();
+    const regCount = Math.floor(Math.random()*40)+15;
+    const registrations = [];
+    const memberIds = Object.keys(members);
+    for(let r=0;r<regCount;r++){
+      const mid = memberIds[Math.floor(Math.random()*memberIds.length)];
+      if(!registrations.find(x=>x.memberId===mid)){
+        registrations.push({ memberId:mid, registeredAt:new Date(Date.now()-Math.random()*20*86400000).toISOString(), checkedIn: dayOffset<0 ? Math.random()>0.2 : false, checkedInAt: null });
+      }
+    }
+    events[id] = { id, title, date, location:loc, price, capacity:120, registrations, description:'Join fellow members for this exclusive chamber event.', status: dayOffset<0?'completed':'upcoming' };
+  });
+
+  const transactions = {};
+  const memberIds = Object.keys(members);
+  memberIds.forEach((mid,i)=>{
+    const m = members[mid];
+    const tx = uid('txn_');
+    transactions[tx] = { id:tx, type:'dues', memberId:mid, amount: tiers.find(t=>t.id===m.tier).priceYear, date: m.joinDate, category:'Membership Dues', status:'paid', note:'Annual membership renewal' };
+  });
+  ['Office Rental','Event Catering','Marketing & Print','Staff Salary','Utilities','AGM Venue Hire','Software Subscriptions'].forEach((cat,i)=>{
+    const tx = uid('txn_');
+    transactions[tx] = { id:tx, type:'expense', memberId:null, amount: [3500,2800,1200,8500,650,1800,420][i], date:new Date(Date.now()-(i*9+3)*86400000).toISOString(), category:cat, status:'paid', note:'' };
+  });
+  transactions[uid('txn_')] = { id:uid(), type:'donation', memberId:memberIds[3], amount:5000, date:new Date(Date.now()-15*86400000).toISOString(), category:'Sponsorship', status:'paid', note:'Gala Dinner sponsorship' };
+  transactions[uid('txn_')] = { id:uid(), type:'event', memberId:memberIds[7], amount:80, date:new Date(Date.now()-5*86400000).toISOString(), category:'Event Ticket', status:'paid', note:'Networking Night' };
+
+  const committees = {};
+  const board = uid('com_');
+  committees[board] = { id:board, name:'Board of Directors', description:'Governing body of the chamber', members:[
+    { memberId: memberIds[0], role:'President', termStart:'2025-01-01', termEnd:'2026-12-31' },
+    { memberId: memberIds[2], role:'Vice President', termStart:'2025-01-01', termEnd:'2026-12-31' },
+    { memberId: memberIds[5], role:'Treasurer', termStart:'2025-01-01', termEnd:'2026-12-31' },
+    { memberId: memberIds[8], role:'Secretary', termStart:'2025-01-01', termEnd:'2026-12-31' },
+  ]};
+  const events_com = uid('com_');
+  committees[events_com] = { id:events_com, name:'Events & Programs Committee', description:'Plans chamber events and member programs', members:[
+    { memberId: memberIds[9], role:'Chair', termStart:'2025-06-01', termEnd:'2026-05-31' },
+    { memberId: memberIds[11], role:'Member', termStart:'2025-06-01', termEnd:'2026-05-31' },
+    { memberId: memberIds[13], role:'Member', termStart:'2025-06-01', termEnd:'2026-05-31' },
+  ]};
+  const membership_com = uid('com_');
+  committees[membership_com] = { id:membership_com, name:'Membership Committee', description:'Reviews applications and member engagement', members:[
+    { memberId: memberIds[15], role:'Chair', termStart:'2025-01-01', termEnd:'2026-12-31' },
+    { memberId: memberIds[17], role:'Member', termStart:'2025-01-01', termEnd:'2026-12-31' },
+  ]};
+
+  const loyaltyLog = {};
+  memberIds.slice(0,12).forEach((mid,i)=>{
+    const lg = uid('lg_');
+    loyaltyLog[lg] = { id:lg, memberId:mid, points: [50,100,-200,75,150][i%5], reason:['Event attendance','Membership renewal','Reward redeemed: RM50 Voucher','Referral bonus','Annual dues payment'][i%5], date:new Date(Date.now()-i*8*86400000).toISOString() };
+  });
+
+  db.orgs[orgId] = {
+    id: orgId, name:'Federal Chamber of Commerce', type:'Chamber of Commerce',
+    logoInitial:'F', plan:'growth', createdAt: new Date(Date.now()-400*86400000).toISOString(),
+    subscriptionStatus:'active', nextPaymentDue: new Date(Date.now()+45*86400000).toISOString(),
+    settings:{
+      tiers, currency:'RM',
+      pointsRules:{ perRinggitSpent:1, eventCheckIn:50, referral:200 },
+      rewards:[
+        { id:'rw1', name:'RM50 Event Voucher', cost:500, stock:999 },
+        { id:'rw2', name:'Free Event Pass', cost:800, stock:999 },
+        { id:'rw3', name:'Tier Upgrade Discount 20%', cost:1500, stock:999 },
+      ]
+    },
+    members, events, transactions, committees, loyaltyLog,
+  };
+  db.users['admin@federalchamber.org'] = { email:'admin@federalchamber.org', password:'demo1234', name:'Sarah Lim', role:'owner', orgId, avatarColor:'#3D5AFE' };
+
+  // Second demo org — used to populate the platform admin dashboard with a non-trivial example
+  const orgId2 = 'demo-society';
+  db.orgs[orgId2] = {
+    id: orgId2, name:'KL Photography Society', type:'Member Club',
+    logoInitial:'K', plan:'starter', createdAt: new Date(Date.now()-120*86400000).toISOString(),
+    subscriptionStatus:'notice', nextPaymentDue: new Date(Date.now()-3*86400000).toISOString(),
+    settings:{
+      tiers:[{ id:'standard', name:'Standard', color:'#3D5AFE', priceYear:120, benefits:'Member access' }],
+      currency:'RM', pointsRules:{ perRinggitSpent:1, eventCheckIn:30, referral:100 }, rewards:[],
+    },
+    members:{}, events:{}, transactions:{}, committees:{}, loyaltyLog:{},
+  };
+  db.users['admin@klphoto.org'] = { email:'admin@klphoto.org', password:'demo1234', name:'Wong Kah Yan', role:'owner', orgId:orgId2, avatarColor:'#FF6B4A' };
+
+  // Platform admin — your own account. Not tied to any orgId.
+  db.users['platform@web3studiotech.com'] = { email:'platform@web3studiotech.com', password:'admin1234', name:'Platform Admin', role:'platformAdmin', orgId:null, avatarColor:'#14171F' };
+}
+
+
+/* ============================================================
+   LANDING PAGE
+   ============================================================ */
+function renderLanding(){
+  const el = document.getElementById('view-landing');
+  el.innerHTML = `
+  <style>
+    .lp{ max-width:100%; overflow-x:hidden; }
+    .lp-nav{ position:sticky; top:0; z-index:100; background:rgba(250,250,248,.85); backdrop-filter:blur(10px); border-bottom:1px solid var(--line-soft); }
+    .lp-nav-inner{ max-width:1180px; margin:0 auto; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; }
+    .lp-brand{ display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:600; font-size:19px; }
+    .lp-nav-links{ display:flex; align-items:center; gap:32px; }
+    .lp-nav-links a{ font-size:14px; font-weight:500; color:var(--ink-soft); }
+    .lp-nav-links a:hover{ color:var(--ink); }
+    .lp-nav-cta{ display:flex; gap:10px; align-items:center; }
+
+    .lp-hero{ max-width:1180px; margin:0 auto; padding:88px 24px 60px; display:grid; grid-template-columns:1.1fr 0.9fr; gap:60px; align-items:center; }
+    .lp-eyebrow{ display:inline-flex; align-items:center; gap:8px; background:var(--brand-light); color:var(--brand); padding:6px 14px; border-radius:100px; font-size:13px; font-weight:600; margin-bottom:24px; }
+    .lp-hero h1{ font-family:var(--font-display); font-size:54px; font-weight:600; line-height:1.06; letter-spacing:-0.02em; margin-bottom:22px; }
+    .lp-hero h1 em{ font-style:italic; color:var(--brand); font-weight:500; }
+    .lp-hero p{ font-size:18px; color:var(--ink-soft); line-height:1.6; max-width:480px; margin-bottom:32px; }
+    .lp-hero-ctas{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+    .lp-trust{ margin-top:36px; font-size:13px; color:var(--ink-faint); }
+
+    .lp-card-stack{ position:relative; height:460px; }
+    .membership-card{
+      position:absolute; width:340px; height:200px; border-radius:18px; padding:24px;
+      box-shadow:0 20px 50px rgba(20,23,31,.18); color:#fff; display:flex; flex-direction:column; justify-content:space-between;
+    }
+    .membership-card .mc-top{ display:flex; justify-content:space-between; align-items:flex-start; }
+    .membership-card .mc-org{ font-size:11px; opacity:.85; text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+    .membership-card .mc-tier{ font-family:var(--font-display); font-size:20px; font-weight:600; margin-top:2px; }
+    .membership-card .mc-chip{ width:38px; height:28px; border-radius:6px; background:rgba(255,255,255,.25); border:1px solid rgba(255,255,255,.4); }
+    .membership-card .mc-name{ font-family:var(--font-mono); font-size:15px; letter-spacing:.04em; }
+    .membership-card .mc-bottom{ display:flex; justify-content:space-between; align-items:flex-end; font-size:11px; opacity:.85; }
+    .card1{ top:0; left:40px; background:linear-gradient(135deg,#14171F,#2A2E3D); transform:rotate(-6deg); z-index:1; }
+    .card2{ top:90px; left:0; background:linear-gradient(135deg,#3D5AFE,#5B72FF); transform:rotate(3deg); z-index:2; }
+    .card3{ top:185px; left:55px; background:linear-gradient(135deg,#FF6B4A,#FF8A6E); transform:rotate(-2deg); z-index:3; }
+
+    .lp-logos{ border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); padding:28px 24px; }
+    .lp-logos-inner{ max-width:1180px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:24px; }
+    .lp-logos-label{ font-size:12px; font-weight:600; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; }
+    .lp-logo-item{ font-family:var(--font-display); font-size:16px; font-weight:600; color:var(--ink-faint); opacity:.7; }
+
+    .lp-section{ max-width:1180px; margin:0 auto; padding:100px 24px; }
+    .lp-section-head{ max-width:620px; margin-bottom:56px; }
+    .lp-kicker{ font-size:13px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.06em; margin-bottom:14px; }
+    .lp-section h2{ font-family:var(--font-display); font-size:38px; font-weight:600; letter-spacing:-0.01em; line-height:1.15; }
+    .lp-section-head p{ font-size:16px; color:var(--ink-soft); margin-top:14px; line-height:1.6; }
+
+    .lp-feature-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+    .lp-feature-card{ background:var(--paper-raised); border:1px solid var(--line); border-radius:16px; padding:28px; transition:all .2s; }
+    .lp-feature-card:hover{ box-shadow:var(--shadow-md); transform:translateY(-3px); border-color:var(--line); }
+    .lp-feature-icon{ width:44px; height:44px; border-radius:11px; display:flex; align-items:center; justify-content:center; margin-bottom:18px; }
+    .lp-feature-card h3{ font-family:var(--font-display); font-size:18px; font-weight:600; margin-bottom:8px; }
+    .lp-feature-card p{ font-size:14px; color:var(--ink-soft); line-height:1.6; }
+
+    .lp-showcase{ background:var(--ink); border-radius:28px; padding:64px 56px; color:#fff; position:relative; overflow:hidden; }
+    .lp-showcase::before{ content:''; position:absolute; top:-100px; right:-100px; width:340px; height:340px; background:radial-gradient(circle, rgba(61,90,254,.35), transparent 70%); }
+    .lp-showcase-grid{ display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:center; position:relative; }
+    .lp-showcase h2{ font-family:var(--font-display); font-size:32px; font-weight:600; margin-bottom:16px; line-height:1.2; }
+    .lp-showcase p{ color:rgba(255,255,255,.7); font-size:15px; line-height:1.7; margin-bottom:24px; }
+    .lp-showcase-list{ list-style:none; }
+    .lp-showcase-list li{ display:flex; gap:10px; align-items:flex-start; padding:10px 0; font-size:14px; color:rgba(255,255,255,.85); border-bottom:1px solid rgba(255,255,255,.08); }
+    .lp-showcase-list li:last-child{ border-bottom:none; }
+    .lp-showcase-list svg{ flex-shrink:0; margin-top:2px; color:var(--accent); }
+    .lp-mock{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:20px; }
+    .lp-mock-row{ display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid rgba(255,255,255,.08); font-size:13px; }
+    .lp-mock-row:last-child{ border:none; }
+
+    .lp-pricing{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+    .lp-price-card{ background:var(--paper-raised); border:1.5px solid var(--line); border-radius:18px; padding:32px; position:relative; }
+    .lp-price-card.featured{ border-color:var(--brand); box-shadow:0 0 0 4px var(--brand-light); }
+    .lp-price-badge{ position:absolute; top:-12px; right:28px; background:var(--brand); color:#fff; font-size:11px; font-weight:700; padding:5px 12px; border-radius:100px; }
+    .lp-price-card h3{ font-family:var(--font-display); font-size:20px; font-weight:600; margin-bottom:6px; }
+    .lp-price-card .price-sub{ font-size:13px; color:var(--ink-faint); margin-bottom:20px; }
+    .lp-price-amt{ font-family:var(--font-display); font-size:42px; font-weight:600; margin-bottom:4px; }
+    .lp-price-amt span{ font-size:15px; font-weight:400; color:var(--ink-faint); }
+    .lp-price-card ul{ list-style:none; margin:24px 0 28px; }
+    .lp-price-card li{ display:flex; gap:10px; align-items:flex-start; font-size:13.5px; padding:8px 0; color:var(--ink-soft); }
+    .lp-price-card li svg{ flex-shrink:0; margin-top:2px; color:var(--success); }
+
+    .lp-testimonial{ background:var(--brand-light); border-radius:24px; padding:56px; text-align:center; }
+    .lp-testimonial blockquote{ font-family:var(--font-display); font-size:26px; font-weight:500; line-height:1.4; max-width:780px; margin:0 auto 24px; color:var(--ink); }
+    .lp-testimonial-author{ display:flex; align-items:center; justify-content:center; gap:12px; }
+    .lp-testimonial-author .name{ font-weight:700; font-size:14px; }
+    .lp-testimonial-author .role{ font-size:13px; color:var(--ink-faint); }
+
+    .lp-cta-section{ text-align:center; padding:100px 24px; }
+    .lp-cta-section h2{ font-family:var(--font-display); font-size:42px; font-weight:600; margin-bottom:18px; letter-spacing:-0.01em; }
+    .lp-cta-section p{ font-size:17px; color:var(--ink-soft); margin-bottom:36px; }
+
+    .lp-footer{ border-top:1px solid var(--line-soft); padding:48px 24px; }
+    .lp-footer-inner{ max-width:1180px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px; }
+    .lp-footer-links{ display:flex; gap:28px; }
+    .lp-footer-links a{ font-size:13px; color:var(--ink-faint); }
+
+    @media(max-width:900px){
+      .lp-hero{ grid-template-columns:1fr; padding-top:48px; }
+      .lp-hero h1{ font-size:38px; }
+      .lp-card-stack{ height:320px; }
+      .membership-card{ width:280px; height:165px; }
+      .lp-feature-grid{ grid-template-columns:1fr; }
+      .lp-pricing{ grid-template-columns:1fr; }
+      .lp-showcase{ padding:40px 24px; }
+      .lp-showcase-grid{ grid-template-columns:1fr; gap:32px; }
+      .lp-nav-links{ display:none; }
+      .lp-section h2{ font-size:28px; }
+    }
+  </style>
+
+  <div class="lp">
+    <nav class="lp-nav">
+      <div class="lp-nav-inner">
+        <div class="lp-brand">${icon('logo')} AssoHub</div>
+        <div class="lp-nav-links">
+          <a href="#features">Features</a>
+          <a href="#showcase">How it works</a>
+          <a href="#pricing">Pricing</a>
+        </div>
+        <div class="lp-nav-cta">
+          <button class="btn btn-ghost btn-sm" onclick="goToAuth('login')">Log in</button>
+          <button class="btn btn-primary btn-sm" onclick="goToAuth('signup')">Start free trial</button>
+        </div>
+      </div>
+    </nav>
+
+    <section class="lp-hero">
+      <div>
+        <div class="lp-eyebrow">${icon('star')} Built for associations &amp; chambers</div>
+        <h1>Run your membership <em>like the modern<br>organization</em> it is.</h1>
+        <p>Members, events, dues, loyalty points, and committees — in one clean dashboard. Replace your spreadsheets, the clunky portal from 2012, and three different tools your treasurer hates.</p>
+        <div class="lp-hero-ctas">
+          <button class="btn btn-primary btn-lg" onclick="goToAuth('signup')">Start free 14-day trial ${icon('arrowRight')}</button>
+          <button class="btn btn-secondary btn-lg" onclick="goToAuth('login')">View live demo</button>
+        </div>
+        <div class="lp-trust">No credit card required · Set up your org in under 5 minutes</div>
+      </div>
+      <div class="lp-card-stack">
+        <div class="membership-card card1">
+          <div class="mc-top"><div><div class="mc-org">Federal Chamber of Commerce</div><div class="mc-tier">Standard</div></div><div class="mc-chip"></div></div>
+          <div><div class="mc-name">DAVID LEE</div><div class="mc-bottom"><span>MEMBER NO. CHM-1012</span><span>VALID THRU 12/26</span></div></div>
+        </div>
+        <div class="membership-card card2">
+          <div class="mc-top"><div><div class="mc-org">Federal Chamber of Commerce</div><div class="mc-tier">Gold</div></div><div class="mc-chip"></div></div>
+          <div><div class="mc-name">SITI AISHAH RAHMAN</div><div class="mc-bottom"><span>MEMBER NO. CHM-1002</span><span>VALID THRU 12/26</span></div></div>
+        </div>
+        <div class="membership-card card3">
+          <div class="mc-top"><div><div class="mc-org">Federal Chamber of Commerce</div><div class="mc-tier">Platinum</div></div><div class="mc-chip"></div></div>
+          <div><div class="mc-name">TAN WEI MING</div><div class="mc-bottom"><span>MEMBER NO. CHM-1001</span><span>VALID THRU 12/26</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="lp-logos">
+      <div class="lp-logos-inner">
+        <div class="lp-logos-label">Trusted by organizations like</div>
+        <div class="lp-logo-item">Chambers of Commerce</div>
+        <div class="lp-logo-item">Professional Societies</div>
+        <div class="lp-logo-item">Alumni Associations</div>
+        <div class="lp-logo-item">Trade Bodies</div>
+        <div class="lp-logo-item">Member Clubs</div>
+      </div>
+    </div>
+
+    <section class="lp-section" id="features">
+      <div class="lp-section-head">
+        <div class="lp-kicker">Everything in one place</div>
+        <h2>Five tools your committee currently juggles. Now just one.</h2>
+        <p>No more chasing renewal payments in Excel, tracking RSVPs in WhatsApp, or losing committee term records in someone's inbox.</p>
+      </div>
+      <div class="lp-feature-grid">
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon" style="background:var(--brand-light); color:var(--brand);">${icon('members')}</div>
+          <h3>Member directory &amp; tiers</h3>
+          <p>Searchable directory with custom membership tiers, renewal tracking, and digital membership cards your members actually want to show off.</p>
+        </div>
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon" style="background:var(--accent-light); color:var(--accent);">${icon('events')}</div>
+          <h3>Events &amp; RSVPs</h3>
+          <p>Create events, take registrations, and check members in with QR codes at the door. Capacity limits and waitlists built in.</p>
+        </div>
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon" style="background:var(--success-light); color:var(--success);">${icon('loyalty')}</div>
+          <h3>Loyalty &amp; points</h3>
+          <p>Reward attendance, renewals, and referrals with points members redeem for real perks. Configurable rules, zero spreadsheets.</p>
+        </div>
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon" style="background:var(--warn-light); color:#9A7416;">${icon('accounting')}</div>
+          <h3>Basic accounting</h3>
+          <p>Track dues, donations, and expenses with a simple P&amp;L. Export-ready reports for your treasurer and annual audit.</p>
+        </div>
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon" style="background:#F3EBFF; color:#9C5FFF;">${icon('committee')}</div>
+          <h3>Committees &amp; board</h3>
+          <p>Track committee rosters, roles, and term dates. Know exactly when a board seat is up for renewal.</p>
+        </div>
+        <div class="lp-feature-card">
+          <div class="lp-feature-icon" style="background:#E1F5F9; color:#16A3B8;">${icon('dashboard')}</div>
+          <h3>One dashboard</h3>
+          <p>Revenue, attendance, expiring memberships, and upcoming events — see the health of your organization at a glance.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-section" id="showcase">
+      <div class="lp-showcase">
+        <div class="lp-showcase-grid">
+          <div>
+            <h2>Membership tiers that feel premium — because they are.</h2>
+            <p>Set up Platinum, Gold, Silver, or whatever structure fits your organization. Each tier carries its own pricing, benefits, and a digital card members can pull up at the door.</p>
+            <ul class="lp-showcase-list">
+              <li>${icon('check')} Custom tiers with pricing &amp; benefits text</li>
+              <li>${icon('check')} Auto-flag expiring &amp; lapsed memberships</li>
+              <li>${icon('check')} Bulk import from your existing spreadsheet</li>
+              <li>${icon('check')} Member self-view of their own card &amp; points</li>
+            </ul>
+          </div>
+          <div class="lp-mock">
+            <div class="lp-mock-row"><span>Tan Wei Ming</span><span class="pill pill-neutral" style="background:rgba(255,255,255,.12); color:#fff;">Platinum</span></div>
+            <div class="lp-mock-row"><span>Siti Aishah Rahman</span><span class="pill" style="background:rgba(255,255,255,.12); color:#fff;">Gold</span></div>
+            <div class="lp-mock-row"><span>Rajesh Kumar</span><span class="pill" style="background:rgba(255,255,255,.12); color:#fff;">Gold</span></div>
+            <div class="lp-mock-row"><span>Lim Hui Yi</span><span class="pill" style="background:rgba(255,255,255,.12); color:#fff;">Silver</span></div>
+            <div class="lp-mock-row"><span>Mohd Faiz Hassan</span><span class="pill" style="background:rgba(255,255,255,.12); color:#fff;">Standard</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-section" id="pricing">
+      <div class="lp-section-head" style="margin-left:auto; margin-right:auto; text-align:center;">
+        <div class="lp-kicker" style="text-align:center;">Simple pricing</div>
+        <h2>One plan for every stage of growth.</h2>
+        <p style="margin-left:auto; margin-right:auto;">Cancel anytime. Prices in MYR, billed monthly.</p>
+      </div>
+      <div class="lp-pricing">
+        <div class="lp-price-card">
+          <h3>Starter</h3>
+          <div class="price-sub">For small clubs &amp; societies</div>
+          <div class="lp-price-amt">RM 149<span>/month</span></div>
+          <ul>
+            <li>${icon('check')} Up to 150 members</li>
+            <li>${icon('check')} Member directory &amp; tiers</li>
+            <li>${icon('check')} Events with RSVP</li>
+            <li>${icon('check')} Basic accounting</li>
+          </ul>
+          <button class="btn btn-secondary" style="width:100%;" onclick="goToAuth('signup')">Start free trial</button>
+        </div>
+        <div class="lp-price-card featured">
+          <div class="lp-price-badge">Most popular</div>
+          <h3>Growth</h3>
+          <div class="price-sub">For chambers &amp; associations</div>
+          <div class="lp-price-amt">RM 399<span>/month</span></div>
+          <ul>
+            <li>${icon('check')} Up to 1,000 members</li>
+            <li>${icon('check')} Everything in Starter</li>
+            <li>${icon('check')} QR check-in &amp; loyalty points</li>
+            <li>${icon('check')} Committee &amp; board tracking</li>
+            <li>${icon('check')} Custom branding</li>
+          </ul>
+          <button class="btn btn-primary" style="width:100%;" onclick="goToAuth('signup')">Start free trial</button>
+        </div>
+        <div class="lp-price-card">
+          <h3>Enterprise</h3>
+          <div class="price-sub">For federations &amp; large bodies</div>
+          <div class="lp-price-amt">Custom</div>
+          <ul>
+            <li>${icon('check')} Unlimited members</li>
+            <li>${icon('check')} Everything in Growth</li>
+            <li>${icon('check')} Multi-chapter support</li>
+            <li>${icon('check')} Dedicated onboarding</li>
+          </ul>
+          <button class="btn btn-secondary" style="width:100%;" onclick="goToAuth('signup')">Talk to us</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-section">
+      <div class="lp-testimonial">
+        <blockquote>"We replaced four spreadsheets, a WhatsApp group, and a 15-year-old member portal with this. Renewal tracking alone saved us a full day a month."</blockquote>
+        <div class="lp-testimonial-author">
+          <div class="avatar" style="background:#3D5AFE;">SL</div>
+          <div style="text-align:left;"><div class="name">Sarah Lim</div><div class="role">Executive Director, Federal Chamber of Commerce</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-cta-section">
+      <h2>Ready to modernize your association?</h2>
+      <p>Join organizations already running their membership the easy way.</p>
+      <button class="btn btn-primary btn-lg" onclick="goToAuth('signup')">Start your free trial ${icon('arrowRight')}</button>
+    </section>
+
+    <footer class="lp-footer">
+      <div class="lp-footer-inner">
+        <div class="lp-brand" style="font-size:16px;">${icon('logo')} AssoHub</div>
+        <div class="lp-footer-links">
+          <a href="#features">Features</a>
+          <a href="#pricing">Pricing</a>
+          <a href="javascript:void(0)" onclick="goToAuth('login')">Log in</a>
+        </div>
+        <div style="font-size:13px; color:var(--ink-faint);">© 2026 AssoHub. All rights reserved.</div>
+      </div>
+    </footer>
+  </div>
+  `;
+}
+
+function goToAuth(mode){
+  switchView('view-auth');
+  renderAuth(mode);
+}
+function switchView(id){
+  document.querySelectorAll('.app').forEach(v=>v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+/* ============================================================
+   AUTH (LOGIN / SIGNUP)
+   ============================================================ */
+function renderAuth(mode){
+  const el = document.getElementById('view-auth');
+  el.innerHTML = `
+  <style>
+    .auth-wrap{ min-height:100vh; display:grid; grid-template-columns:1fr 1fr; }
+    .auth-side{ background:var(--ink); color:#fff; padding:56px; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden; }
+    .auth-side::before{ content:''; position:absolute; bottom:-120px; left:-80px; width:380px; height:380px; background:radial-gradient(circle, rgba(61,90,254,.4), transparent 70%); }
+    .auth-side-content{ position:relative; max-width:420px; }
+    .auth-side h2{ font-family:var(--font-display); font-size:30px; font-weight:600; line-height:1.25; margin:32px 0 16px; }
+    .auth-side p{ color:rgba(255,255,255,.65); font-size:15px; line-height:1.7; }
+    .auth-form-col{ display:flex; align-items:center; justify-content:center; padding:40px 24px; }
+    .auth-form-box{ width:100%; max-width:380px; }
+    .auth-back{ display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--ink-faint); margin-bottom:28px; font-weight:500; }
+    .auth-form-box h1{ font-family:var(--font-display); font-size:28px; font-weight:600; margin-bottom:8px; }
+    .auth-form-box .sub{ color:var(--ink-soft); font-size:14px; margin-bottom:28px; }
+    .auth-toggle{ display:flex; gap:8px; margin-top:24px; font-size:13.5px; color:var(--ink-soft); }
+    .auth-toggle a{ color:var(--brand); font-weight:600; }
+    .auth-demo-box{ margin-top:24px; padding:14px 16px; background:var(--brand-light); border-radius:10px; font-size:13px; color:var(--brand-dark); }
+    .auth-demo-box b{ font-weight:700; }
+    @media(max-width:860px){ .auth-side{ display:none; } .auth-wrap{ grid-template-columns:1fr; } }
+  </style>
+  <div class="auth-wrap">
+    <div class="auth-side">
+      <div class="lp-brand" style="color:#fff;">${icon('logo')} AssoHub</div>
+      <div class="auth-side-content">
+        <div class="pill" style="background:rgba(255,255,255,.12); color:#fff;">${icon('star')} 14-day free trial</div>
+        <h2>Everything your association needs, minus the chaos.</h2>
+        <p>Members, events, dues, points, and committees — all synced, all in one modern dashboard built for how associations actually run.</p>
+      </div>
+      <div style="position:relative; font-size:13px; color:rgba(255,255,255,.5);">© 2026 AssoHub</div>
+    </div>
+    <div class="auth-form-col">
+      <div class="auth-form-box" id="authFormBox"></div>
+    </div>
+  </div>
+  `;
+  renderAuthForm(mode || 'login');
+}
+
+function renderAuthForm(mode){
+  const box = document.getElementById('authFormBox');
+  if(mode === 'login'){
+    box.innerHTML = `
+      <a href="javascript:void(0)" class="auth-back" onclick="switchView('view-landing')">← Back to home</a>
+      <h1>Welcome back</h1>
+      <div class="sub">Log in to your organization's dashboard.</div>
+      <form id="loginForm">
+        <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="you@organization.org" required></div>
+        <div class="field"><label>Password</label><input type="password" id="loginPassword" placeholder="••••••••" required></div>
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%; margin-top:6px;" id="loginBtn">Log in</button>
+      </form>
+      <div class="auth-demo-box"><b>Demo login:</b> admin@federalchamber.org / demo1234</div>
+      <div class="auth-demo-box" style="background:var(--line-soft); color:var(--ink-soft);"><b>Platform admin demo:</b> platform@web3studiotech.com / admin1234</div>
+      <div class="auth-toggle">New organization? <a href="javascript:void(0)" onclick="renderAuthForm('signup')">Start your free trial</a></div>
+    `;
+    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+  } else {
+    box.innerHTML = `
+      <a href="javascript:void(0)" class="auth-back" onclick="switchView('view-landing')">← Back to home</a>
+      <h1>Create your organization</h1>
+      <div class="sub">Set up your dashboard in under 5 minutes.</div>
+      <form id="signupForm">
+        <div class="field"><label>Organization name</label><input type="text" id="suOrgName" placeholder="e.g. Federal Chamber of Commerce" required></div>
+        <div class="field"><label>Organization type</label>
+          <select id="suOrgType">
+            <option>Chamber of Commerce</option>
+            <option>Professional Society</option>
+            <option>Member Club</option>
+            <option>Association</option>
+            <option>Alumni Association</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Your name</label><input type="text" id="suName" placeholder="Full name" required></div>
+        <div class="field"><label>Work email</label><input type="email" id="suEmail" placeholder="you@organization.org" required></div>
+        <div class="field"><label>Password</label><input type="password" id="suPassword" placeholder="At least 6 characters" required minlength="6"></div>
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%; margin-top:6px;" id="signupBtn">Start free trial</button>
+      </form>
+      <div class="auth-toggle">Already have an account? <a href="javascript:void(0)" onclick="renderAuthForm('login')">Log in</a></div>
+    `;
+    document.getElementById('signupForm').addEventListener('submit', handleSignup);
+  }
+}
+
+function handleLogin(e){
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+  btn.innerHTML = `<span class="loader"></span>`; btn.disabled = true;
+  setTimeout(()=>{
+    const user = DB.users[email];
+    if(!user || user.password !== password){
+      toast('Invalid email or password', 'error');
+      btn.innerHTML = 'Log in'; btn.disabled = false;
+      return;
+    }
+    SESSION = { email: user.email, orgId: user.orgId, name: user.name, role: user.role };
+    setSession(SESSION);
+    if(user.role === 'platformAdmin'){
+      enterPlatformAdmin();
+    } else {
+      enterDashboard();
+    }
+  }, 500);
+}
+
+function handleSignup(e){
+  e.preventDefault();
+  const btn = document.getElementById('signupBtn');
+  const orgName = document.getElementById('suOrgName').value.trim();
+  const orgType = document.getElementById('suOrgType').value;
+  const name = document.getElementById('suName').value.trim();
+  const email = document.getElementById('suEmail').value.trim().toLowerCase();
+  const password = document.getElementById('suPassword').value;
+  if(DB.users[email]){ toast('An account with this email already exists', 'error'); return; }
+  btn.innerHTML = `<span class="loader"></span>`; btn.disabled = true;
+  setTimeout(()=>{
+    const orgId = uid('org_');
+    DB.orgs[orgId] = {
+      id: orgId, name: orgName, type: orgType, logoInitial: orgName.charAt(0).toUpperCase(),
+      plan:'trial', createdAt: new Date().toISOString(),
+      subscriptionStatus:'active', nextPaymentDue: new Date(Date.now()+14*86400000).toISOString(),
+      settings:{
+        tiers:[
+          { id:'standard', name:'Standard', color:'#3D5AFE', priceYear:100, benefits:'Member directory listing' },
+        ],
+        currency:'RM',
+        pointsRules:{ perRinggitSpent:1, eventCheckIn:50, referral:200 },
+        rewards:[]
+      },
+      members:{}, events:{}, transactions:{}, committees:{}, loyaltyLog:{},
+    };
+    DB.users[email] = { email, password, name, role:'owner', orgId, avatarColor: avatarColor(name) };
+    persist();
+    SESSION = { email, orgId, name, role:'owner' };
+    setSession(SESSION);
+    toast('Welcome to AssoHub! Your organization is ready.', 'success');
+    enterDashboard();
+  }, 600);
+}
+
+function logout(){
+  clearSession();
+  SESSION = null;
+  switchView('view-landing');
+}
+
+/* ============================================================
+   PLATFORM ADMIN — Web3 Studio Tech internal view.
+   Lists every org on the platform with subscription controls.
+   Gated entirely by SESSION.role === 'platformAdmin' (see login routing).
+   ============================================================ */
+function enterPlatformAdmin(){
+  switchView('view-platform-admin');
+  renderPlatformAdmin();
+}
+
+let platformAdminFilter = 'all';
+
+function renderPlatformAdmin(){
+  const el = document.getElementById('view-platform-admin');
+  el.innerHTML = `
+  <style>
+    .pa-shell{ min-height:100vh; }
+    .pa-topbar{ height:64px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; padding:0 28px; background:var(--paper-raised); }
+    .pa-body{ padding:28px; max-width:1280px; margin:0 auto; }
+    .pa-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+    @media(max-width:860px){ .pa-stats{ grid-template-columns:1fr 1fr; } }
+  </style>
+  <div class="pa-shell">
+    <div class="pa-topbar">
+      <div class="lp-brand">${icon('logo')} AssoHub <span class="pill pill-neutral" style="margin-left:6px;">Platform Admin</span></div>
+      <div class="user-chip" onclick="logout()" style="cursor:pointer;">
+        <div class="avatar" style="background:var(--ink); width:32px; height:32px; font-size:12px;">${initials(SESSION.name)}</div>
+        <div class="user-chip-text"><div class="name">${escapeHtml(SESSION.name)}</div></div>
+        ${icon('logout')}
+      </div>
+    </div>
+    <div class="pa-body">
+      <div class="page-head">
+        <div><h1>All Organizations</h1><div class="sub">Manage subscription status across every customer on the platform</div></div>
+      </div>
+      <div id="paStats"></div>
+      <div class="toolbar">
+        <div class="tabs" style="border-bottom:none; margin-bottom:0;">
+          <div class="tab ${platformAdminFilter==='all'?'active':''}" onclick="platformAdminFilter='all'; renderPlatformAdmin();">All</div>
+          <div class="tab ${platformAdminFilter==='active'?'active':''}" onclick="platformAdminFilter='active'; renderPlatformAdmin();">Active</div>
+          <div class="tab ${platformAdminFilter==='reminder'?'active':''}" onclick="platformAdminFilter='reminder'; renderPlatformAdmin();">Reminder</div>
+          <div class="tab ${platformAdminFilter==='notice'?'active':''}" onclick="platformAdminFilter='notice'; renderPlatformAdmin();">Notice</div>
+          <div class="tab ${platformAdminFilter==='suspended'?'active':''}" onclick="platformAdminFilter='suspended'; renderPlatformAdmin();">Suspended</div>
+        </div>
+      </div>
+      <div class="card" style="overflow-x:auto;">
+        <table id="paOrgsTable"></table>
+      </div>
+    </div>
+  </div>
+  `;
+  renderPlatformAdminStats();
+  renderPlatformAdminTable();
+}
+
+function renderPlatformAdminStats(){
+  const orgs = Object.values(DB.orgs);
+  const byStatus = { active:0, reminder:0, notice:0, suspended:0 };
+  orgs.forEach(o => { byStatus[o.subscriptionStatus || 'active']++; });
+  const totalMembers = orgs.reduce((s,o)=>s+Object.keys(o.members||{}).length, 0);
+
+  document.getElementById('paStats').innerHTML = `
+    <div class="pa-stats">
+      <div class="card kpi-card"><div class="kpi-label">Total Organizations</div><div class="kpi-value">${orgs.length}</div></div>
+      <div class="card kpi-card"><div class="kpi-label">Active</div><div class="kpi-value" style="color:var(--success);">${byStatus.active}</div></div>
+      <div class="card kpi-card"><div class="kpi-label">Needs Attention</div><div class="kpi-value" style="color:#9A7416;">${byStatus.reminder + byStatus.notice}</div></div>
+      <div class="card kpi-card"><div class="kpi-label">Suspended</div><div class="kpi-value" style="color:var(--danger);">${byStatus.suspended}</div></div>
+    </div>
+  `;
+}
+
+function renderPlatformAdminTable(){
+  let orgs = Object.values(DB.orgs);
+  if(platformAdminFilter !== 'all'){
+    orgs = orgs.filter(o => (o.subscriptionStatus||'active') === platformAdminFilter);
+  }
+  orgs = orgs.sort((a,b)=> new Date(a.nextPaymentDue||0) - new Date(b.nextPaymentDue||0));
+  const table = document.getElementById('paOrgsTable');
+
+  if(orgs.length===0){
+    table.outerHTML = `<div class="empty-state">${icon('building')}<h4>No organizations in this view</h4></div>`;
+    return;
+  }
+
+  table.innerHTML = `
+    <thead><tr><th>Organization</th><th>Plan</th><th>Members</th><th>Next Payment Due</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+      ${orgs.map(o=>{
+        const status = o.subscriptionStatus || 'active';
+        const meta = SUBSCRIPTION_LABELS[status] || SUBSCRIPTION_LABELS.active;
+        const memberCount = Object.keys(o.members||{}).length;
+        const dueDays = o.nextPaymentDue ? daysUntil(o.nextPaymentDue) : null;
+        return `
+        <tr>
+          <td>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="avatar" style="background:${avatarColor(o.name)};">${escapeHtml(o.logoInitial || o.name.charAt(0))}</div>
+              <div><div style="font-weight:600;">${escapeHtml(o.name)}</div><div style="font-size:12px; color:var(--ink-faint);">${escapeHtml(o.type||'')}</div></div>
+            </div>
+          </td>
+          <td style="text-transform:capitalize;">${escapeHtml(o.plan)}</td>
+          <td>${memberCount}</td>
+          <td>${o.nextPaymentDue ? fmtDate(o.nextPaymentDue) : '—'} ${dueDays!==null && dueDays<0 ? `<span class="pill pill-danger" style="margin-left:4px;">${Math.abs(dueDays)}d overdue</span>` : ''}</td>
+          <td><span class="pill ${meta.pill}">${meta.label}</span></td>
+          <td>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <select onchange="updateOrgSubscriptionStatus('${o.id}', this.value)" style="padding:6px 8px; border:1.5px solid var(--line); border-radius:7px; font-size:12.5px;">
+                <option value="active" ${status==='active'?'selected':''}>Active</option>
+                <option value="reminder" ${status==='reminder'?'selected':''}>Reminder</option>
+                <option value="notice" ${status==='notice'?'selected':''}>Notice</option>
+                <option value="suspended" ${status==='suspended'?'selected':''}>Suspended</option>
+              </select>
+              <button class="btn-icon btn-ghost" onclick="openSetPaymentDueModal('${o.id}')" title="Set next payment due date">${icon('calendar')}</button>
+            </div>
+          </td>
+        </tr>
+      `}).join('')}
+    </tbody>
+  `;
+}
+
+function updateOrgSubscriptionStatus(orgId, status){
+  DB.orgs[orgId].subscriptionStatus = status;
+  persist();
+  renderPlatformAdminStats();
+  renderPlatformAdminTable();
+  toast(`${DB.orgs[orgId].name} marked as ${SUBSCRIPTION_LABELS[status].label}`, 'success');
+}
+
+function openSetPaymentDueModal(orgId){
+  const org = DB.orgs[orgId];
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'paymentDueBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Set Next Payment Due — ${escapeHtml(org.name)}</h3><button class="btn-icon btn-ghost" onclick="closeModal('paymentDueBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <div class="field"><label>Next payment due date</label><input type="date" id="pdDate" value="${org.nextPaymentDue ? org.nextPaymentDue.slice(0,10) : ''}"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('paymentDueBackdrop')">Cancel</button>
+        <button class="btn btn-primary" onclick="savePaymentDue('${orgId}')">Save</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function savePaymentDue(orgId){
+  const dateVal = document.getElementById('pdDate').value;
+  if(!dateVal){ toast('Please pick a date', 'error'); return; }
+  DB.orgs[orgId].nextPaymentDue = new Date(dateVal).toISOString();
+  persist();
+  closeModal('paymentDueBackdrop');
+  renderPlatformAdminTable();
+  toast('Payment due date updated', 'success');
+}
+
+/* ============================================================
+   DASHBOARD APP SHELL
+   ============================================================ */
+const NAV_ITEMS = [
+  { id:'overview', label:'Dashboard', icon:'dashboard' },
+  { id:'members', label:'Members', icon:'members' },
+  { id:'events', label:'Events', icon:'events' },
+  { id:'loyalty', label:'Loyalty', icon:'loyalty' },
+  { id:'accounting', label:'Accounting', icon:'accounting' },
+  { id:'committees', label:'Committees', icon:'committee' },
+  { id:'settings', label:'Settings', icon:'settings' },
+];
+let currentPage = 'overview';
+
+function enterDashboard(){
+  switchView('view-dashboard');
+  renderDashboardShell();
+  navigateTo('overview');
+}
+
+function renderDashboardShell(){
+  const org = currentOrg();
+  const el = document.getElementById('view-dashboard');
+  el.innerHTML = `
+  <style>
+    .shell{ display:grid; grid-template-columns:248px 1fr; min-height:100vh; }
+    .sidebar{ background:var(--paper-raised); border-right:1px solid var(--line); display:flex; flex-direction:column; position:sticky; top:0; height:100vh; }
+    .sidebar-brand{ display:flex; align-items:center; gap:10px; padding:20px 20px 18px; font-family:var(--font-display); font-weight:600; font-size:17px; border-bottom:1px solid var(--line-soft); }
+    .org-switcher{ padding:14px 16px; border-bottom:1px solid var(--line-soft); display:flex; align-items:center; gap:10px; }
+    .org-switcher-icon{ width:34px; height:34px; border-radius:9px; background:var(--brand); color:#fff; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:14px; flex-shrink:0; }
+    .org-switcher-text{ overflow:hidden; }
+    .org-switcher-text .name{ font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .org-switcher-text .plan{ font-size:11px; color:var(--ink-faint); text-transform:capitalize; }
+    .sidebar-nav{ flex:1; padding:14px 12px; overflow-y:auto; }
+    .nav-item{ display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:9px; font-size:14px; font-weight:500; color:var(--ink-soft); margin-bottom:2px; transition:all .12s; }
+    .nav-item:hover{ background:var(--line-soft); color:var(--ink); }
+    .nav-item.active{ background:var(--brand-light); color:var(--brand); font-weight:700; }
+    .nav-item svg{ flex-shrink:0; }
+    .sidebar-footer{ padding:14px 16px; border-top:1px solid var(--line-soft); }
+    .user-chip{ display:flex; align-items:center; gap:10px; padding:8px; border-radius:9px; cursor:pointer; }
+    .user-chip:hover{ background:var(--line-soft); }
+    .user-chip-text{ flex:1; overflow:hidden; }
+    .user-chip-text .name{ font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .user-chip-text .role{ font-size:11px; color:var(--ink-faint); text-transform:capitalize; }
+
+    .main{ display:flex; flex-direction:column; min-width:0; }
+    .topbar{ height:64px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; padding:0 28px; position:sticky; top:0; background:rgba(250,250,248,.9); backdrop-filter:blur(8px); z-index:50; }
+    .topbar-title{ font-family:var(--font-display); font-size:19px; font-weight:600; }
+    .topbar-actions{ display:flex; align-items:center; gap:14px; }
+    .search-box{ display:flex; align-items:center; gap:8px; background:var(--line-soft); border-radius:9px; padding:8px 12px; width:240px; color:var(--ink-faint); }
+    .search-box input{ border:none; background:transparent; outline:none; font-size:13.5px; width:100%; color:var(--ink); }
+    .icon-btn{ width:38px; height:38px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:var(--ink-soft); background:transparent; border:1px solid var(--line); position:relative; }
+    .icon-btn:hover{ background:var(--line-soft); }
+    .notif-dot{ position:absolute; top:8px; right:8px; width:7px; height:7px; border-radius:50%; background:var(--accent); border:1.5px solid var(--paper-raised); }
+
+    .page{ padding:28px; max-width:1320px; }
+    .page-head{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:14px; }
+    .page-head h1{ font-family:var(--font-display); font-size:26px; font-weight:600; }
+    .page-head .sub{ color:var(--ink-faint); font-size:14px; margin-top:4px; }
+    .page-actions{ display:flex; gap:10px; }
+
+    .kpi-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+    .kpi-card{ padding:20px; }
+    .kpi-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .kpi-icon{ width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+    .kpi-label{ font-size:12.5px; color:var(--ink-faint); font-weight:600; text-transform:uppercase; letter-spacing:.03em; margin-bottom:6px; }
+    .kpi-value{ font-family:var(--font-display); font-size:28px; font-weight:600; }
+    .kpi-delta{ font-size:12px; font-weight:600; margin-top:6px; display:flex; align-items:center; gap:4px; }
+
+    .dash-grid{ display:grid; grid-template-columns:1.4fr 1fr; gap:18px; }
+    .panel{ padding:22px; margin-bottom:18px; }
+    .panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+    .panel-head h3{ font-family:var(--font-display); font-size:17px; font-weight:600; }
+    .panel-head a{ font-size:13px; color:var(--brand); font-weight:600; }
+
+    .mini-row{ display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--line-soft); }
+    .mini-row:last-child{ border-bottom:none; }
+    .mini-row .meta{ flex:1; min-width:0; }
+    .mini-row .meta .title{ font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mini-row .meta .sub{ font-size:12px; color:var(--ink-faint); }
+
+    .tabs{ display:flex; gap:4px; border-bottom:1.5px solid var(--line); margin-bottom:20px; }
+    .tab{ padding:10px 16px; font-size:13.5px; font-weight:600; color:var(--ink-faint); border-bottom:2px solid transparent; margin-bottom:-1.5px; }
+    .tab.active{ color:var(--brand); border-bottom-color:var(--brand); }
+    .tab:hover{ color:var(--ink); }
+
+    .toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+    .toolbar .search-box{ width:280px; }
+
+    .tier-badge{ display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:100px; font-size:11.5px; font-weight:700; color:#fff; }
+
+    @media(max-width:1100px){
+      .dash-grid{ grid-template-columns:1fr; }
+      .kpi-grid{ grid-template-columns:repeat(2,1fr); }
+    }
+    @media(max-width:860px){
+      .shell{ grid-template-columns:1fr; }
+      .sidebar{ position:fixed; left:0; top:0; bottom:0; z-index:200; transform:translateX(-100%); transition:transform .2s; width:248px; }
+      .sidebar.open{ transform:translateX(0); }
+      .search-box{ display:none; }
+      .kpi-grid{ grid-template-columns:1fr; }
+      .page{ padding:18px; }
+    }
+  </style>
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">${icon('logo')} AssoHub</div>
+      <div class="org-switcher">
+        <div class="org-switcher-icon">${escapeHtml(org.logoInitial || org.name.charAt(0))}</div>
+        <div class="org-switcher-text">
+          <div class="name">${escapeHtml(org.name)}</div>
+          <div class="plan">${escapeHtml(org.plan)} plan</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav" id="sidebarNav"></nav>
+      <div class="sidebar-footer">
+        <div class="user-chip" onclick="logout()">
+          <div class="avatar" style="background:${SESSION.role==='owner' ? 'var(--brand)' : avatarColor(SESSION.name)}; width:32px; height:32px; font-size:12px;">${initials(SESSION.name)}</div>
+          <div class="user-chip-text"><div class="name">${escapeHtml(SESSION.name)}</div><div class="role">${escapeHtml(SESSION.role)}</div></div>
+          ${icon('logout')}
+        </div>
+      </div>
+    </aside>
+    <div class="main">
+      <div class="topbar">
+        <div class="topbar-title" id="topbarTitle">Dashboard</div>
+        <div class="topbar-actions">
+          <div class="search-box">${icon('search')}<input type="text" placeholder="Search members, events..." id="globalSearch"></div>
+          <button class="icon-btn">${icon('bell')}<span class="notif-dot"></span></button>
+        </div>
+      </div>
+      <div id="subscriptionBanner"></div>
+      <div class="page" id="pageContent"></div>
+    </div>
+  </div>
+  `;
+  renderSidebarNav();
+  renderSubscriptionBanner();
+}
+
+function renderSubscriptionBanner(){
+  const org = currentOrg();
+  const banner = document.getElementById('subscriptionBanner');
+  if(!banner || !org) return;
+  const status = org.subscriptionStatus || 'active';
+  const dueStr = org.nextPaymentDue ? fmtDate(org.nextPaymentDue) : '—';
+
+  const styles = {
+    reminder: { bg:'var(--brand-light)', fg:'var(--brand-dark)', icon:'bell',
+      text:`Your subscription payment is due on <b>${dueStr}</b>. Renew to avoid any interruption to your account.` },
+    notice: { bg:'var(--warn-light)', fg:'#7A5A0E', icon:'bell',
+      text:`<b>Action needed:</b> payment was due on <b>${dueStr}</b>. Your account will be suspended if payment isn't received soon — please contact us to renew.` },
+    suspended: { bg:'var(--danger-light)', fg:'var(--danger)', icon:'bell',
+      text:`<b>Your account is suspended</b> due to non-payment. Contact us to reactivate — your data is safe and untouched.` },
+  };
+
+  if(status === 'active' || !styles[status]){ banner.innerHTML=''; return; }
+  const s = styles[status];
+  banner.innerHTML = `
+    <div style="background:${s.bg}; color:${s.fg}; padding:12px 28px; font-size:13.5px; display:flex; align-items:center; gap:10px; border-bottom:1px solid rgba(0,0,0,0.06);">
+      ${icon(s.icon)} <span style="flex:1;">${s.text}</span>
+      <a href="mailto:web3studiotech@gmail.com?subject=AssoHub Payment - ${encodeURIComponent(org.name)}" style="font-weight:700; text-decoration:underline; color:inherit; white-space:nowrap;">Contact billing</a>
+    </div>
+  `;
+}
+
+function renderSidebarNav(){
+  const nav = document.getElementById('sidebarNav');
+  nav.innerHTML = NAV_ITEMS.map(item => `
+    <div class="nav-item ${currentPage===item.id ? 'active':''}" onclick="navigateTo('${item.id}')">
+      ${icon(item.icon)}<span>${item.label}</span>
+    </div>
+  `).join('');
+}
+
+function navigateTo(page){
+  currentPage = page;
+  renderSidebarNav();
+  document.getElementById('topbarTitle').textContent = NAV_ITEMS.find(n=>n.id===page)?.label || '';
+  const content = document.getElementById('pageContent');
+  const org = currentOrg();
+
+  if(org && org.subscriptionStatus === 'suspended' && page !== 'settings'){
+    renderSuspendedScreen(content);
+    return;
+  }
+
+  if(page==='overview') renderOverview(content);
+  else if(page==='members') renderMembers(content);
+  else if(page==='events') renderEvents(content);
+  else if(page==='loyalty') renderLoyalty(content);
+  else if(page==='accounting') renderAccounting(content);
+  else if(page==='committees') renderCommittees(content);
+  else if(page==='settings') renderSettings(content);
+}
+
+function renderSuspendedScreen(el){
+  const org = currentOrg();
+  el.innerHTML = `
+    <div class="empty-state" style="padding:80px 24px; max-width:480px; margin:0 auto;">
+      <div class="kpi-icon" style="background:var(--danger-light); color:var(--danger); width:64px; height:64px; margin:0 auto 20px;">${icon('bell')}</div>
+      <h4 style="font-size:20px;">This account is suspended</h4>
+      <p style="margin-bottom:24px;">${escapeHtml(org.name)}'s subscription is suspended due to non-payment. Your data is safe and nothing has been deleted — access will be restored as soon as payment is confirmed.</p>
+      <a href="mailto:web3studiotech@gmail.com?subject=AssoHub Reactivation - ${encodeURIComponent(org.name)}" class="btn btn-primary">${icon('mail')} Contact billing to reactivate</a>
+    </div>
+  `;
+}
+
+/* ============================================================
+   OVERVIEW / DASHBOARD PAGE
+   ============================================================ */
+function renderOverview(el){
+  const org = currentOrg();
+  const members = Object.values(org.members);
+  const events = Object.values(org.events);
+  const txns = Object.values(org.transactions);
+  const activeMembers = members.filter(m=>m.status==='active').length;
+  const expiringSoon = members.filter(m=> m.status==='active' && daysUntil(m.expiryDate) <= 30 && daysUntil(m.expiryDate) >= 0).length;
+  const revenue = txns.filter(t=>t.type!=='expense').reduce((s,t)=>s+t.amount,0);
+  const expenses = txns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const upcomingEvents = events.filter(e=>e.status==='upcoming').sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const recentTxns = [...txns].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
+  const expiringMembers = members.filter(m=>m.status==='active' && daysUntil(m.expiryDate)<=45).sort((a,b)=>daysUntil(a.expiryDate)-daysUntil(b.expiryDate)).slice(0,6);
+  const tierMap = {}; org.settings.tiers.forEach(t=>tierMap[t.id]=t);
+
+  el.innerHTML = `
+    <div class="page-head">
+      <div>
+        <h1>Welcome back, ${escapeHtml(SESSION.name.split(' ')[0])}</h1>
+        <div class="sub">Here's what's happening with ${escapeHtml(org.name)} today.</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-secondary" onclick="navigateTo('events')">${icon('plus')} New Event</button>
+        <button class="btn btn-primary" onclick="navigateTo('members')">${icon('plus')} Add Member</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="card kpi-card">
+        <div class="kpi-top"><div class="kpi-icon" style="background:var(--brand-light); color:var(--brand);">${icon('users')}</div></div>
+        <div class="kpi-label">Active Members</div>
+        <div class="kpi-value">${activeMembers}</div>
+        <div class="kpi-delta" style="color:var(--success);">of ${members.length} total members</div>
+      </div>
+      <div class="card kpi-card">
+        <div class="kpi-top"><div class="kpi-icon" style="background:var(--accent-light); color:var(--accent);">${icon('calendar')}</div></div>
+        <div class="kpi-label">Upcoming Events</div>
+        <div class="kpi-value">${upcomingEvents.length}</div>
+        <div class="kpi-delta" style="color:var(--ink-faint);">${upcomingEvents[0] ? 'Next: '+fmtDateShort(upcomingEvents[0].date) : 'None scheduled'}</div>
+      </div>
+      <div class="card kpi-card">
+        <div class="kpi-top"><div class="kpi-icon" style="background:var(--success-light); color:var(--success);">${icon('trendUp')}</div></div>
+        <div class="kpi-label">Total Revenue</div>
+        <div class="kpi-value">${fmtMoney(revenue, org.settings.currency)}</div>
+        <div class="kpi-delta" style="color:var(--success);">Net: ${fmtMoney(revenue-expenses, org.settings.currency)}</div>
+      </div>
+      <div class="card kpi-card">
+        <div class="kpi-top"><div class="kpi-icon" style="background:var(--warn-light); color:#9A7416;">${icon('bell')}</div></div>
+        <div class="kpi-label">Expiring Soon</div>
+        <div class="kpi-value">${expiringSoon}</div>
+        <div class="kpi-delta" style="color:#9A7416;">Within 30 days</div>
+      </div>
+    </div>
+
+    <div class="dash-grid">
+      <div>
+        <div class="card panel">
+          <div class="panel-head"><h3>Upcoming Events</h3><a href="javascript:void(0)" onclick="navigateTo('events')">View all</a></div>
+          ${upcomingEvents.length===0 ? `<div class="empty-state" style="padding:30px;"><p>No upcoming events scheduled.</p></div>` :
+          upcomingEvents.slice(0,5).map(e=>`
+            <div class="mini-row">
+              <div class="kpi-icon" style="background:var(--brand-light); color:var(--brand); width:42px; height:42px;">
+                <div style="text-align:center; line-height:1.1;"><div style="font-size:15px; font-weight:700;">${new Date(e.date).getDate()}</div><div style="font-size:9px; text-transform:uppercase;">${new Date(e.date).toLocaleDateString('en-MY',{month:'short'})}</div></div>
+              </div>
+              <div class="meta"><div class="title">${escapeHtml(e.title)}</div><div class="sub">${escapeHtml(e.location)} · ${e.registrations.length} registered</div></div>
+              <span class="pill pill-brand">${fmtDateShort(e.date)}</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="card panel">
+          <div class="panel-head"><h3>Recent Transactions</h3><a href="javascript:void(0)" onclick="navigateTo('accounting')">View all</a></div>
+          ${recentTxns.length===0 ? `<div class="empty-state" style="padding:30px;"><p>No transactions yet.</p></div>` :
+          recentTxns.map(t=>{
+            const member = t.memberId ? org.members[t.memberId] : null;
+            return `
+            <div class="mini-row">
+              <div class="kpi-icon" style="background:${t.type==='expense'?'var(--danger-light)':'var(--success-light)'}; color:${t.type==='expense'?'var(--danger)':'var(--success)'}; width:38px; height:38px;">${icon(t.type==='expense'?'wallet':'trendUp')}</div>
+              <div class="meta"><div class="title">${escapeHtml(t.category)}${member ? ' · '+escapeHtml(member.name) : ''}</div><div class="sub">${fmtDate(t.date)}</div></div>
+              <span style="font-weight:700; font-size:14px; color:${t.type==='expense'?'var(--danger)':'var(--success)'};">${t.type==='expense'?'−':'+'}${fmtMoney(t.amount, org.settings.currency)}</span>
+            </div>
+          `}).join('')}
+        </div>
+      </div>
+
+      <div>
+        <div class="card panel">
+          <div class="panel-head"><h3>Memberships Expiring Soon</h3></div>
+          ${expiringMembers.length===0 ? `<div class="empty-state" style="padding:30px;"><p>No memberships expiring soon.</p></div>` :
+          expiringMembers.map(m=>{
+            const tier = tierMap[m.tier] || {};
+            const d = daysUntil(m.expiryDate);
+            return `
+            <div class="mini-row">
+              <div class="avatar" style="background:${avatarColor(m.name)};">${initials(m.name)}</div>
+              <div class="meta"><div class="title">${escapeHtml(m.name)}</div><div class="sub">${escapeHtml(tier.name||'')}</div></div>
+              <span class="pill ${d<0?'pill-danger':d<=14?'pill-warn':'pill-neutral'}">${d<0?'Expired':d+'d left'}</span>
+            </div>
+          `}).join('')}
+        </div>
+
+        <div class="card panel">
+          <div class="panel-head"><h3>Members by Tier</h3></div>
+          ${org.settings.tiers.map(t=>{
+            const count = members.filter(m=>m.tier===t.id).length;
+            const pct = members.length ? Math.round(count/members.length*100) : 0;
+            return `
+            <div style="margin-bottom:14px;">
+              <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
+                <span style="font-weight:600; display:flex; align-items:center; gap:6px;"><span style="width:8px; height:8px; border-radius:50%; background:${t.color}; display:inline-block;"></span>${escapeHtml(t.name)}</span>
+                <span style="color:var(--ink-faint);">${count}</span>
+              </div>
+              <div style="height:6px; background:var(--line-soft); border-radius:10px; overflow:hidden;"><div style="height:100%; width:${pct}%; background:${t.color}; border-radius:10px;"></div></div>
+            </div>
+          `}).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   MEMBERS MODULE
+   ============================================================ */
+let membersFilter = { search:'', tier:'all', status:'all' };
+
+function renderMembers(el){
+  const org = currentOrg();
+  el.innerHTML = `
+    <div class="page-head">
+      <div><h1>Members</h1><div class="sub">${Object.keys(org.members).length} total members across ${org.settings.tiers.length} tiers</div></div>
+      <div class="page-actions">
+        <button class="btn btn-secondary" onclick="openImportModal()">${icon('upload')} Import</button>
+        <button class="btn btn-primary" onclick="openMemberModal()">${icon('plus')} Add Member</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="search-box" style="width:280px;">${icon('search')}<input type="text" id="memberSearch" placeholder="Search by name, company, email..." value="${escapeHtml(membersFilter.search)}"></div>
+      <select id="tierFilter" style="padding:9px 12px; border:1.5px solid var(--line); border-radius:9px; font-size:13.5px; background:#fff;">
+        <option value="all">All tiers</option>
+        ${org.settings.tiers.map(t=>`<option value="${t.id}" ${membersFilter.tier===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
+      </select>
+      <select id="statusFilter" style="padding:9px 12px; border:1.5px solid var(--line); border-radius:9px; font-size:13.5px; background:#fff;">
+        <option value="all">All statuses</option>
+        <option value="active" ${membersFilter.status==='active'?'selected':''}>Active</option>
+        <option value="expired" ${membersFilter.status==='expired'?'selected':''}>Expired</option>
+      </select>
+    </div>
+    <div class="card" style="overflow-x:auto;">
+      <table id="membersTable"></table>
+    </div>
+  `;
+  document.getElementById('memberSearch').addEventListener('input', e=>{ membersFilter.search = e.target.value; renderMembersTable(); });
+  document.getElementById('tierFilter').addEventListener('change', e=>{ membersFilter.tier = e.target.value; renderMembersTable(); });
+  document.getElementById('statusFilter').addEventListener('change', e=>{ membersFilter.status = e.target.value; renderMembersTable(); });
+  renderMembersTable();
+}
+
+function getFilteredMembers(){
+  const org = currentOrg();
+  const tierMap = {}; org.settings.tiers.forEach(t=>tierMap[t.id]=t);
+  let list = Object.values(org.members);
+  if(membersFilter.search){
+    const q = membersFilter.search.toLowerCase();
+    list = list.filter(m => m.name.toLowerCase().includes(q) || (m.company||'').toLowerCase().includes(q) || (m.email||'').toLowerCase().includes(q) || (m.memberNo||'').toLowerCase().includes(q));
+  }
+  if(membersFilter.tier !== 'all') list = list.filter(m=>m.tier===membersFilter.tier);
+  if(membersFilter.status !== 'all') list = list.filter(m=>m.status===membersFilter.status);
+  return list.sort((a,b)=>a.name.localeCompare(b.name));
+}
+
+function renderMembersTable(){
+  const org = currentOrg();
+  const tierMap = {}; org.settings.tiers.forEach(t=>tierMap[t.id]=t);
+  const list = getFilteredMembers();
+  const table = document.getElementById('membersTable');
+  if(list.length===0){
+    table.outerHTML = `<div class="empty-state">${icon('members')}<h4>No members found</h4><p>Try adjusting your filters or add a new member.</p></div>`;
+    return;
+  }
+  table.innerHTML = `
+    <thead><tr><th>Member</th><th>Tier</th><th>Status</th><th>Joined</th><th>Expires</th><th>Points</th><th></th></tr></thead>
+    <tbody>
+      ${list.map(m=>{
+        const tier = tierMap[m.tier] || {name:'—',color:'#999'};
+        const d = daysUntil(m.expiryDate);
+        return `
+        <tr style="cursor:pointer;" onclick="openMemberProfile('${m.id}')">
+          <td>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div class="avatar" style="background:${avatarColor(m.name)};">${initials(m.name)}</div>
+              <div><div style="font-weight:600;">${escapeHtml(m.name)}</div><div style="font-size:12px; color:var(--ink-faint);">${escapeHtml(m.company||m.email)}</div></div>
+            </div>
+          </td>
+          <td><span class="tier-badge" style="background:${tier.color};">${escapeHtml(tier.name)}</span></td>
+          <td><span class="pill ${m.status==='active'?'pill-success':'pill-danger'}">${m.status==='active'?'Active':'Expired'}</span></td>
+          <td>${fmtDate(m.joinDate)}</td>
+          <td>${fmtDate(m.expiryDate)} ${d>=0 && d<=30 ? `<span class="pill pill-warn" style="margin-left:6px;">${d}d</span>`:''}</td>
+          <td class="mono">${m.points||0}</td>
+          <td onclick="event.stopPropagation();">
+            <button class="btn-icon btn-ghost" onclick="openMemberModal('${m.id}')">${icon('edit')}</button>
+          </td>
+        </tr>
+      `}).join('')}
+    </tbody>
+  `;
+}
+
+function openMemberModal(memberId){
+  const org = currentOrg();
+  const m = memberId ? org.members[memberId] : null;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'memberModalBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>${m ? 'Edit Member' : 'Add Member'}</h3><button class="btn-icon btn-ghost" onclick="closeModal('memberModalBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <div class="field-row">
+          <div class="field"><label>Full name</label><input type="text" id="mfName" value="${m?escapeHtml(m.name):''}" placeholder="Jane Doe" required></div>
+          <div class="field"><label>Company / Organization</label><input type="text" id="mfCompany" value="${m?escapeHtml(m.company||''):''}" placeholder="Acme Sdn Bhd"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Email</label><input type="email" id="mfEmail" value="${m?escapeHtml(m.email||''):''}" placeholder="jane@acme.com"></div>
+          <div class="field"><label>Phone</label><input type="text" id="mfPhone" value="${m?escapeHtml(m.phone||''):''}" placeholder="+60 12-345 6789"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Membership tier</label>
+            <select id="mfTier">${org.settings.tiers.map(t=>`<option value="${t.id}" ${m&&m.tier===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>Status</label>
+            <select id="mfStatus">
+              <option value="active" ${m&&m.status==='active'?'selected':''}>Active</option>
+              <option value="expired" ${m&&m.status==='expired'?'selected':''}>Expired</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Join date</label><input type="date" id="mfJoin" value="${m?m.joinDate.slice(0,10):new Date().toISOString().slice(0,10)}"></div>
+          <div class="field"><label>Expiry date</label><input type="date" id="mfExpiry" value="${m?m.expiryDate.slice(0,10):new Date(Date.now()+365*86400000).toISOString().slice(0,10)}"></div>
+        </div>
+        <div class="field"><label>Notes</label><textarea id="mfNotes" rows="2" placeholder="Internal notes...">${m?escapeHtml(m.notes||''):''}</textarea></div>
+      </div>
+      <div class="modal-footer">
+        ${m ? `<button class="btn btn-danger" onclick="deleteMember('${m.id}')">Delete</button>` : ''}
+        <button class="btn btn-secondary" onclick="closeModal('memberModalBackdrop')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveMember('${m?m.id:''}')">Save Member</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function saveMember(memberId){
+  const org = currentOrg();
+  const name = document.getElementById('mfName').value.trim();
+  if(!name){ toast('Name is required', 'error'); return; }
+  const data = {
+    name,
+    company: document.getElementById('mfCompany').value.trim(),
+    email: document.getElementById('mfEmail').value.trim(),
+    phone: document.getElementById('mfPhone').value.trim(),
+    tier: document.getElementById('mfTier').value,
+    status: document.getElementById('mfStatus').value,
+    joinDate: new Date(document.getElementById('mfJoin').value).toISOString(),
+    expiryDate: new Date(document.getElementById('mfExpiry').value).toISOString(),
+    notes: document.getElementById('mfNotes').value.trim(),
+  };
+  if(memberId){
+    Object.assign(org.members[memberId], data);
+    toast('Member updated', 'success');
+  } else {
+    const id = uid('mem_');
+    const memberCount = Object.keys(org.members).length;
+    org.members[id] = { id, ...data, points:0, memberNo: org.id.slice(0,3).toUpperCase()+'-'+String(1000+memberCount) };
+    toast('Member added', 'success');
+  }
+  persist();
+  closeModal('memberModalBackdrop');
+  if(currentPage==='members') renderMembersTable();
+  if(currentPage==='overview') navigateTo('overview');
+}
+
+function deleteMember(memberId){
+  if(!confirm('Delete this member? This cannot be undone.')) return;
+  const org = currentOrg();
+  delete org.members[memberId];
+  persist();
+  closeModal('memberModalBackdrop');
+  closeModal('memberProfileBackdrop');
+  renderMembersTable();
+  toast('Member deleted');
+}
+
+function closeModal(id){
+  const el = document.getElementById(id);
+  if(el) el.remove();
+}
+
+function openMemberProfile(memberId){
+  const org = currentOrg();
+  const m = org.members[memberId];
+  const tier = org.settings.tiers.find(t=>t.id===m.tier) || {name:'—', color:'#999', benefits:''};
+  const memberTxns = Object.values(org.transactions).filter(t=>t.memberId===memberId).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const memberEvents = Object.values(org.events).filter(e=>e.registrations.some(r=>r.memberId===memberId));
+  const memberLoyalty = Object.values(org.loyaltyLog).filter(l=>l.memberId===memberId).sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'memberProfileBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal" style="max-width:680px;">
+      <div class="modal-header"><h3>Member Profile</h3><button class="btn-icon btn-ghost" onclick="closeModal('memberProfileBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <div class="membership-card" style="position:static; width:100%; height:auto; margin-bottom:20px; background:linear-gradient(135deg, ${tier.color}, ${tier.color}cc); box-shadow:var(--shadow-md); display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center;">
+          <div style="display:flex; flex-direction:column; justify-content:space-between; height:100%; min-height:152px;">
+            <div class="mc-top" style="margin-bottom:0;">
+              <div><div class="mc-org">${escapeHtml(org.name)}</div><div class="mc-tier">${escapeHtml(tier.name)}</div></div>
+              <div class="mc-chip"></div>
+            </div>
+            <div><div class="mc-name">${escapeHtml(m.name.toUpperCase())}</div>
+              <div class="mc-bottom"><span>MEMBER NO. ${escapeHtml(m.memberNo)}</span><span>VALID THRU ${new Date(m.expiryDate).toLocaleDateString('en-MY',{month:'2-digit',year:'2-digit'})}</span></div>
+            </div>
+          </div>
+          <div id="memberCardQR" style="background:#fff; padding:8px; border-radius:10px; line-height:0;"></div>
+        </div>
+        <div style="text-align:center; margin:-10px 0 18px; font-size:12px; color:var(--ink-faint);">Scan this code at event check-in</div>
+        <div class="field-row" style="margin-bottom:18px;">
+          <div><div style="font-size:12px; color:var(--ink-faint); font-weight:600; margin-bottom:3px;">EMAIL</div><div style="font-size:14px;">${escapeHtml(m.email||'—')}</div></div>
+          <div><div style="font-size:12px; color:var(--ink-faint); font-weight:600; margin-bottom:3px;">PHONE</div><div style="font-size:14px;">${escapeHtml(m.phone||'—')}</div></div>
+        </div>
+        <div class="field-row" style="margin-bottom:18px;">
+          <div><div style="font-size:12px; color:var(--ink-faint); font-weight:600; margin-bottom:3px;">COMPANY</div><div style="font-size:14px;">${escapeHtml(m.company||'—')}</div></div>
+          <div><div style="font-size:12px; color:var(--ink-faint); font-weight:600; margin-bottom:3px;">LOYALTY POINTS</div><div style="font-size:14px; font-weight:700; color:var(--accent);">${m.points} pts</div></div>
+        </div>
+
+        <div class="tabs" style="margin-top:24px;">
+          <div class="tab active" data-tab="hist" onclick="switchProfileTab('hist', this)">Payment History</div>
+          <div class="tab" data-tab="evt" onclick="switchProfileTab('evt', this)">Events Attended</div>
+          <div class="tab" data-tab="pts" onclick="switchProfileTab('pts', this)">Points Log</div>
+        </div>
+        <div id="profileTabContent">
+          ${memberTxns.length===0 ? `<p style="color:var(--ink-faint); font-size:13.5px;">No transactions recorded.</p>` :
+          memberTxns.map(t=>`<div class="mini-row"><div class="meta"><div class="title">${escapeHtml(t.category)}</div><div class="sub">${fmtDate(t.date)}</div></div><span style="font-weight:700;">${fmtMoney(t.amount, org.settings.currency)}</span></div>`).join('')}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('memberProfileBackdrop'); openMemberModal('${m.id}')">${icon('edit')} Edit</button>
+        <button class="btn btn-primary" onclick="closeModal('memberProfileBackdrop')">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  renderMemberQRCode('memberCardQR', m.id, 96);
+
+  window._profileData = { memberTxns, memberEvents, memberLoyalty, org };
+}
+
+function switchProfileTab(tab, btn){
+  document.querySelectorAll('#memberProfileBackdrop .tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const { memberTxns, memberEvents, memberLoyalty, org } = window._profileData;
+  const content = document.getElementById('profileTabContent');
+  if(tab==='hist'){
+    content.innerHTML = memberTxns.length===0 ? `<p style="color:var(--ink-faint); font-size:13.5px;">No transactions recorded.</p>` :
+      memberTxns.map(t=>`<div class="mini-row"><div class="meta"><div class="title">${escapeHtml(t.category)}</div><div class="sub">${fmtDate(t.date)}</div></div><span style="font-weight:700;">${fmtMoney(t.amount, org.settings.currency)}</span></div>`).join('');
+  } else if(tab==='evt'){
+    content.innerHTML = memberEvents.length===0 ? `<p style="color:var(--ink-faint); font-size:13.5px;">No events attended.</p>` :
+      memberEvents.map(e=>`<div class="mini-row"><div class="meta"><div class="title">${escapeHtml(e.title)}</div><div class="sub">${fmtDate(e.date)}</div></div><span class="pill pill-neutral">${escapeHtml(e.location)}</span></div>`).join('');
+  } else {
+    content.innerHTML = memberLoyalty.length===0 ? `<p style="color:var(--ink-faint); font-size:13.5px;">No points activity.</p>` :
+      memberLoyalty.map(l=>`<div class="mini-row"><div class="meta"><div class="title">${escapeHtml(l.reason)}</div><div class="sub">${fmtDate(l.date)}</div></div><span style="font-weight:700; color:${l.points<0?'var(--danger)':'var(--success)'};">${l.points>0?'+':''}${l.points} pts</span></div>`).join('');
+  }
+}
+
+function openImportModal(){
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'importModalBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Bulk Import Members</h3><button class="btn-icon btn-ghost" onclick="closeModal('importModalBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <p style="font-size:13.5px; color:var(--ink-soft); margin-bottom:14px;">Paste CSV data with columns: <span class="mono" style="background:var(--line-soft); padding:2px 6px; border-radius:4px;">name,email,phone,company,tier</span></p>
+        <div class="field"><textarea id="csvInput" rows="8" placeholder="Jane Doe,jane@acme.com,+60123456789,Acme Sdn Bhd,standard
+John Smith,john@beta.com,+60198765432,Beta Corp,gold"></textarea></div>
+        <div class="hint">Tier values must match an existing tier ID (see Settings → Tiers). Unmatched rows default to the first tier.</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('importModalBackdrop')">Cancel</button>
+        <button class="btn btn-primary" onclick="processImport()">Import Members</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function processImport(){
+  const org = currentOrg();
+  const raw = document.getElementById('csvInput').value.trim();
+  if(!raw){ toast('Please paste some CSV data', 'error'); return; }
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  const defaultTier = org.settings.tiers[0]?.id || 'standard';
+  let count = 0;
+  lines.forEach(line=>{
+    const [name, email, phone, company, tier] = line.split(',').map(s=>s?.trim());
+    if(!name) return;
+    const id = uid('mem_');
+    const memberCount = Object.keys(org.members).length;
+    org.members[id] = {
+      id, name, email: email||'', phone: phone||'', company: company||'',
+      tier: org.settings.tiers.find(t=>t.id===tier) ? tier : defaultTier,
+      status:'active', joinDate: new Date().toISOString(), expiryDate: new Date(Date.now()+365*86400000).toISOString(),
+      points:0, memberNo: org.id.slice(0,3).toUpperCase()+'-'+String(1000+memberCount), notes:''
+    };
+    count++;
+  });
+  persist();
+  closeModal('importModalBackdrop');
+  if(currentPage==='members') renderMembersTable();
+  toast(`Imported ${count} member${count!==1?'s':''}`, 'success');
+}
+
+/* ============================================================
+   EVENTS MODULE
+   ============================================================ */
+let eventsFilter = 'upcoming';
+
+function renderEvents(el){
+  const org = currentOrg();
+  el.innerHTML = `
+    <div class="page-head">
+      <div><h1>Events</h1><div class="sub">${Object.keys(org.events).length} events total</div></div>
+      <div class="page-actions"><button class="btn btn-primary" onclick="openEventModal()">${icon('plus')} New Event</button></div>
+    </div>
+    <div class="tabs">
+      <div class="tab ${eventsFilter==='upcoming'?'active':''}" onclick="eventsFilter='upcoming'; renderEvents(document.getElementById('pageContent'))">Upcoming</div>
+      <div class="tab ${eventsFilter==='completed'?'active':''}" onclick="eventsFilter='completed'; renderEvents(document.getElementById('pageContent'))">Completed</div>
+      <div class="tab ${eventsFilter==='all'?'active':''}" onclick="eventsFilter='all'; renderEvents(document.getElementById('pageContent'))">All</div>
+    </div>
+    <div id="eventsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px,1fr)); gap:16px;"></div>
+  `;
+  renderEventsGrid();
+}
+
+function renderEventsGrid(){
+  const org = currentOrg();
+  let list = Object.values(org.events);
+  if(eventsFilter !== 'all') list = list.filter(e=>e.status===eventsFilter);
+  list = list.sort((a,b)=> eventsFilter==='completed' ? new Date(b.date)-new Date(a.date) : new Date(a.date)-new Date(b.date));
+  const grid = document.getElementById('eventsGrid');
+  if(list.length===0){
+    grid.innerHTML = `<div style="grid-column:1/-1;"><div class="empty-state">${icon('events')}<h4>No events here</h4><p>Create your first event to start tracking RSVPs and check-ins.</p></div></div>`;
+    return;
+  }
+  grid.innerHTML = list.map(e=>{
+    const checkedIn = e.registrations.filter(r=>r.checkedIn).length;
+    return `
+    <div class="card" style="overflow:hidden; cursor:pointer;" onclick="openEventDetail('${e.id}')">
+      <div style="height:6px; background:${e.status==='upcoming'?'var(--brand)':'var(--success)'};"></div>
+      <div style="padding:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+          <span class="pill ${e.status==='upcoming'?'pill-brand':'pill-success'}">${e.status==='upcoming'?'Upcoming':'Completed'}</span>
+          <span style="font-size:13px; font-weight:700; color:var(--ink-faint);">${fmtDateShort(e.date)}</span>
+        </div>
+        <h3 style="font-family:var(--font-display); font-size:18px; font-weight:600; margin-bottom:6px;">${escapeHtml(e.title)}</h3>
+        <div style="font-size:13px; color:var(--ink-faint); margin-bottom:16px;">${escapeHtml(e.location)}</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:14px; border-top:1px solid var(--line-soft);">
+          <div style="font-size:13px;"><b>${e.registrations.length}</b> / ${e.capacity} registered</div>
+          ${e.status==='upcoming' ? `<span style="font-size:13px; color:var(--ink-faint);">${e.price>0?fmtMoney(e.price,org.settings.currency):'Free'}</span>` : `<span style="font-size:13px; color:var(--success); font-weight:600;">${checkedIn} checked in</span>`}
+        </div>
+      </div>
+    </div>
+  `}).join('');
+}
+
+function openEventModal(eventId){
+  const org = currentOrg();
+  const e = eventId ? org.events[eventId] : null;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'eventModalBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>${e?'Edit Event':'Create Event'}</h3><button class="btn-icon btn-ghost" onclick="closeModal('eventModalBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <div class="field"><label>Event title</label><input type="text" id="efTitle" value="${e?escapeHtml(e.title):''}" placeholder="Annual Gala Dinner 2026"></div>
+        <div class="field-row">
+          <div class="field"><label>Date</label><input type="date" id="efDate" value="${e?e.date.slice(0,10):''}"></div>
+          <div class="field"><label>Capacity</label><input type="number" id="efCapacity" value="${e?e.capacity:100}" min="1"></div>
+        </div>
+        <div class="field"><label>Location</label><input type="text" id="efLocation" value="${e?escapeHtml(e.location):''}" placeholder="Grand Ballroom, Sunway Resort"></div>
+        <div class="field"><label>Ticket price (${org.settings.currency})</label><input type="number" id="efPrice" value="${e?e.price:0}" min="0" step="0.01"></div>
+        <div class="field"><label>Description</label><textarea id="efDesc" rows="3" placeholder="Event details...">${e?escapeHtml(e.description||''):''}</textarea></div>
+      </div>
+      <div class="modal-footer">
+        ${e ? `<button class="btn btn-danger" onclick="deleteEvent('${e.id}')">Delete</button>` : ''}
+        <button class="btn btn-secondary" onclick="closeModal('eventModalBackdrop')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEvent('${e?e.id:''}')">${e?'Save Changes':'Create Event'}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function saveEvent(eventId){
+  const org = currentOrg();
+  const title = document.getElementById('efTitle').value.trim();
+  const dateVal = document.getElementById('efDate').value;
+  if(!title || !dateVal){ toast('Title and date are required', 'error'); return; }
+  const date = new Date(dateVal).toISOString();
+  const data = {
+    title, date,
+    location: document.getElementById('efLocation').value.trim(),
+    capacity: Number(document.getElementById('efCapacity').value) || 100,
+    price: Number(document.getElementById('efPrice').value) || 0,
+    description: document.getElementById('efDesc').value.trim(),
+    status: new Date(date) < new Date() ? 'completed' : 'upcoming',
+  };
+  if(eventId){
+    Object.assign(org.events[eventId], data);
+    toast('Event updated', 'success');
+  } else {
+    const id = uid('evt_');
+    org.events[id] = { id, ...data, registrations:[] };
+    toast('Event created', 'success');
+  }
+  persist();
+  closeModal('eventModalBackdrop');
+  if(currentPage==='events') renderEvents(document.getElementById('pageContent'));
+}
+
+function deleteEvent(eventId){
+  if(!confirm('Delete this event? Registrations will be lost.')) return;
+  const org = currentOrg();
+  delete org.events[eventId];
+  persist();
+  closeModal('eventModalBackdrop');
+  closeModal('eventDetailBackdrop');
+  renderEvents(document.getElementById('pageContent'));
+  toast('Event deleted');
+}
+
+function openEventDetail(eventId){
+  const org = currentOrg();
+  const e = org.events[eventId];
+  const checkedInCount = e.registrations.filter(r=>r.checkedIn).length;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'eventDetailBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal" style="max-width:680px;">
+      <div class="modal-header">
+        <h3>${escapeHtml(e.title)}</h3>
+        <button class="btn-icon btn-ghost" onclick="closeModal('eventDetailBackdrop')">${icon('close')}</button>
+      </div>
+      <div class="modal-body">
+        <div class="field-row" style="margin-bottom:18px;">
+          <div><div style="font-size:12px; color:var(--ink-faint); font-weight:600;">DATE</div><div style="font-size:14px; font-weight:600;">${fmtDate(e.date)}</div></div>
+          <div><div style="font-size:12px; color:var(--ink-faint); font-weight:600;">LOCATION</div><div style="font-size:14px; font-weight:600;">${escapeHtml(e.location)}</div></div>
+        </div>
+        <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr); margin-bottom:20px;">
+          <div class="card kpi-card" style="padding:14px;"><div class="kpi-label">Registered</div><div class="kpi-value" style="font-size:22px;">${e.registrations.length}</div></div>
+          <div class="card kpi-card" style="padding:14px;"><div class="kpi-label">Capacity</div><div class="kpi-value" style="font-size:22px;">${e.capacity}</div></div>
+          <div class="card kpi-card" style="padding:14px;"><div class="kpi-label">Checked In</div><div class="kpi-value" style="font-size:22px; color:var(--success);">${checkedInCount}</div></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px; flex-wrap:wrap;">
+          <h4 style="font-family:var(--font-display); font-size:16px;">Attendees</h4>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="openQRScannerModal('${e.id}')">${icon('qr')} Scan to Check In</button>
+            <button class="btn btn-secondary btn-sm" onclick="openRegisterMemberModal('${e.id}')">${icon('plus')} Register Member</button>
+          </div>
+        </div>
+        <div id="attendeeList"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('eventDetailBackdrop'); openEventModal('${e.id}')">${icon('edit')} Edit Event</button>
+        <button class="btn btn-primary" onclick="closeModal('eventDetailBackdrop')">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  renderAttendeeList(eventId);
+}
+
+function renderAttendeeList(eventId){
+  const org = currentOrg();
+  const e = org.events[eventId];
+  const list = document.getElementById('attendeeList');
+  if(e.registrations.length===0){
+    list.innerHTML = `<p style="color:var(--ink-faint); font-size:13.5px; padding:16px 0;">No registrations yet.</p>`;
+    return;
+  }
+  list.innerHTML = e.registrations.map(r=>{
+    const m = org.members[r.memberId];
+    if(!m) return '';
+    return `
+    <div class="mini-row">
+      <div class="avatar" style="background:${avatarColor(m.name)}; width:32px; height:32px; font-size:11px;">${initials(m.name)}</div>
+      <div class="meta"><div class="title">${escapeHtml(m.name)}</div><div class="sub">${escapeHtml(m.company||'')}</div></div>
+      ${r.checkedIn
+        ? `<span class="pill pill-success">${icon('check')} Checked in</span>`
+        : `<button class="btn btn-sm btn-secondary" onclick="checkInMember('${eventId}','${r.memberId}')">${icon('qr')} Check in</button>`}
+    </div>
+  `}).join('');
+}
+
+function checkInMember(eventId, memberId){
+  const org = currentOrg();
+  const e = org.events[eventId];
+  const reg = e.registrations.find(r=>r.memberId===memberId);
+  if(reg){
+    reg.checkedIn = true;
+    reg.checkedInAt = new Date().toISOString();
+    // award loyalty points
+    const pts = org.settings.pointsRules.eventCheckIn || 0;
+    if(pts > 0){
+      org.members[memberId].points = (org.members[memberId].points||0) + pts;
+      const lg = uid('lg_');
+      org.loyaltyLog[lg] = { id:lg, memberId, points:pts, reason:'Event check-in: '+e.title, date:new Date().toISOString() };
+    }
+    persist();
+    renderAttendeeList(eventId);
+    toast('Checked in · +'+pts+' points awarded', 'success');
+  }
+}
+
+function openRegisterMemberModal(eventId){
+  const org = currentOrg();
+  const e = org.events[eventId];
+  const registeredIds = new Set(e.registrations.map(r=>r.memberId));
+  const available = Object.values(org.members).filter(m=>!registeredIds.has(m.id));
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'registerMemberBackdrop';
+  backdrop.style.zIndex = 1100;
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Register Member</h3><button class="btn-icon btn-ghost" onclick="closeModal('registerMemberBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <div class="field"><label>Select member</label>
+          <select id="regMemberSelect">
+            ${available.length===0 ? '<option>All members already registered</option>' :
+            available.map(m=>`<option value="${m.id}">${escapeHtml(m.name)} — ${escapeHtml(m.company||m.email)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('registerMemberBackdrop')">Cancel</button>
+        <button class="btn btn-primary" ${available.length===0?'disabled':''} onclick="registerMemberToEvent('${eventId}')">Register</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function registerMemberToEvent(eventId){
+  const org = currentOrg();
+  const memberId = document.getElementById('regMemberSelect').value;
+  org.events[eventId].registrations.push({ memberId, registeredAt:new Date().toISOString(), checkedIn:false, checkedInAt:null });
+  persist();
+  closeModal('registerMemberBackdrop');
+  renderAttendeeList(eventId);
+  toast('Member registered', 'success');
+}
+
+/* ============================================================
+   LOYALTY MODULE
+   ============================================================ */
+let loyaltyTab = 'members';
+
+function renderLoyalty(el){
+  const org = currentOrg();
+  el.innerHTML = `
+    <div class="page-head">
+      <div><h1>Loyalty &amp; Points</h1><div class="sub">Reward member engagement with points and redeemable perks</div></div>
+      <div class="page-actions">
+        <button class="btn btn-secondary" onclick="openPointsRulesModal()">${icon('settings')} Points Rules</button>
+        <button class="btn btn-primary" onclick="openRewardModal()">${icon('plus')} Add Reward</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab ${loyaltyTab==='members'?'active':''}" onclick="loyaltyTab='members'; renderLoyalty(document.getElementById('pageContent'))">Member Points</div>
+      <div class="tab ${loyaltyTab==='rewards'?'active':''}" onclick="loyaltyTab='rewards'; renderLoyalty(document.getElementById('pageContent'))">Rewards Catalog</div>
+      <div class="tab ${loyaltyTab==='log'?'active':''}" onclick="loyaltyTab='log'; renderLoyalty(document.getElementById('pageContent'))">Activity Log</div>
+    </div>
+    <div id="loyaltyContent"></div>
+  `;
+  renderLoyaltyContent();
+}
+
+function renderLoyaltyContent(){
+  const org = currentOrg();
+  const content = document.getElementById('loyaltyContent');
+  if(loyaltyTab==='members'){
+    const members = Object.values(org.members).sort((a,b)=>(b.points||0)-(a.points||0));
+    content.innerHTML = `
+      <div class="card" style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Rank</th><th>Member</th><th>Points Balance</th><th></th></tr></thead>
+          <tbody>
+            ${members.map((m,i)=>`
+              <tr>
+                <td>${i<3 ? `<span style="font-size:16px;">${['🥇','🥈','🥉'][i]}</span>` : `#${i+1}`}</td>
+                <td><div style="display:flex; align-items:center; gap:10px;"><div class="avatar" style="background:${avatarColor(m.name)}; width:30px; height:30px; font-size:11px;">${initials(m.name)}</div>${escapeHtml(m.name)}</div></td>
+                <td><span class="mono" style="font-weight:700; color:var(--accent);">${m.points||0} pts</span></td>
+                <td><button class="btn btn-sm btn-secondary" onclick="openAdjustPointsModal('${m.id}')">Adjust</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } else if(loyaltyTab==='rewards'){
+    const rewards = org.settings.rewards || [];
+    content.innerHTML = rewards.length===0 ? `<div class="empty-state">${icon('loyalty')}<h4>No rewards yet</h4><p>Add a reward members can redeem with their points.</p></div>` :
+    `<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:16px;">
+      ${rewards.map(r=>`
+        <div class="card" style="padding:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+            <div class="kpi-icon" style="background:var(--accent-light); color:var(--accent);">${icon('star')}</div>
+            <button class="btn-icon btn-ghost" onclick="deleteReward('${r.id}')">${icon('trash')}</button>
+          </div>
+          <h4 style="font-family:var(--font-display); font-size:16px; margin-bottom:6px;">${escapeHtml(r.name)}</h4>
+          <div class="mono" style="font-size:14px; font-weight:700; color:var(--brand);">${r.cost} pts</div>
+        </div>
+      `).join('')}
+    </div>`;
+  } else {
+    const log = Object.values(org.loyaltyLog).sort((a,b)=>new Date(b.date)-new Date(a.date));
+    content.innerHTML = `<div class="card" style="padding:6px 20px;">
+      ${log.length===0 ? `<div class="empty-state">${icon('loyalty')}<h4>No activity yet</h4></div>` :
+      log.map(l=>{
+        const m = org.members[l.memberId];
+        if(!m) return '';
+        return `<div class="mini-row">
+          <div class="avatar" style="background:${avatarColor(m.name)}; width:32px; height:32px; font-size:11px;">${initials(m.name)}</div>
+          <div class="meta"><div class="title">${escapeHtml(m.name)} — ${escapeHtml(l.reason)}</div><div class="sub">${fmtDate(l.date)}</div></div>
+          <span style="font-weight:700; color:${l.points<0?'var(--danger)':'var(--success)'};">${l.points>0?'+':''}${l.points} pts</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+}
+
+function openPointsRulesModal(){
+  const org = currentOrg();
+  const rules = org.settings.pointsRules;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'pointsRulesBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Points Earning Rules</h3><button class="btn-icon btn-ghost" onclick="closeModal('pointsRulesBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <div class="field"><label>Points per ${org.settings.currency} spent</label><input type="number" id="prSpent" value="${rules.perRinggitSpent}" min="0"></div>
+        <div class="field"><label>Points for event check-in</label><input type="number" id="prCheckin" value="${rules.eventCheckIn}" min="0"></div>
+        <div class="field"><label>Points for successful referral</label><input type="number" id="prReferral" value="${rules.referral}" min="0"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('pointsRulesBackdrop')">Cancel</button>
+        <button class="btn btn-primary" onclick="savePointsRules()">Save Rules</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function savePointsRules(){
+  const org = currentOrg();
+  org.settings.pointsRules = {
+    perRinggitSpent: Number(document.getElementById('prSpent').value)||0,
+    eventCheckIn: Number(document.getElementById('prCheckin').value)||0,
+    referral: Number(document.getElementById('prReferral').value)||0,
+  };
+  persist();
+  closeModal('pointsRulesBackdrop');
+  toast('Points rules updated', 'success');
+}
+
+function openRewardModal(){
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'rewardModalBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Add Reward</h3><button class="btn-icon btn-ghost" onclick="closeModal('rewardModalBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <div class="field"><label>Reward name</label><input type="text" id="rwName" placeholder="RM50 Event Voucher"></div>
+        <div class="field"><label>Points cost</label><input type="number" id="rwCost" value="500" min="1"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('rewardModalBackdrop')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveReward()">Add Reward</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function saveReward(){
+  const org = currentOrg();
+  const name = document.getElementById('rwName').value.trim();
+  const cost = Number(document.getElementById('rwCost').value);
+  if(!name || !cost){ toast('Please fill all fields', 'error'); return; }
+  org.settings.rewards = org.settings.rewards || [];
+  org.settings.rewards.push({ id: uid('rw_'), name, cost, stock: 999 });
+  persist();
+  closeModal('rewardModalBackdrop');
+  renderLoyaltyContent();
+  toast('Reward added', 'success');
+}
+
+function deleteReward(rewardId){
+  const org = currentOrg();
+  org.settings.rewards = org.settings.rewards.filter(r=>r.id!==rewardId);
+  persist();
+  renderLoyaltyContent();
+  toast('Reward removed');
+}
+
+function openAdjustPointsModal(memberId){
+  const org = currentOrg();
+  const m = org.members[memberId];
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'adjustPointsBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Adjust Points — ${escapeHtml(m.name)}</h3><button class="btn-icon btn-ghost" onclick="closeModal('adjustPointsBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <p style="font-size:13.5px; color:var(--ink-soft); margin-bottom:14px;">Current balance: <b>${m.points||0} pts</b></p>
+        <div class="field"><label>Points (use negative to deduct)</label><input type="number" id="apPoints" placeholder="e.g. 100 or -50"></div>
+        <div class="field"><label>Reason</label><input type="text" id="apReason" placeholder="e.g. Reward redeemed: RM50 Voucher"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('adjustPointsBackdrop')">Cancel</button>
+        <button class="btn btn-primary" onclick="adjustPoints('${memberId}')">Apply</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function adjustPoints(memberId){
+  const org = currentOrg();
+  const pts = Number(document.getElementById('apPoints').value);
+  const reason = document.getElementById('apReason').value.trim() || 'Manual adjustment';
+  if(!pts){ toast('Enter a points value', 'error'); return; }
+  org.members[memberId].points = (org.members[memberId].points||0) + pts;
+  const lg = uid('lg_');
+  org.loyaltyLog[lg] = { id:lg, memberId, points:pts, reason, date:new Date().toISOString() };
+  persist();
+  closeModal('adjustPointsBackdrop');
+  renderLoyaltyContent();
+  toast('Points adjusted', 'success');
+}
+
+/* ============================================================
+   ACCOUNTING MODULE
+   ============================================================ */
+let acctTab = 'overview';
+
+function renderAccounting(el){
+  const org = currentOrg();
+  el.innerHTML = `
+    <div class="page-head">
+      <div><h1>Accounting</h1><div class="sub">Track dues, donations, and expenses</div></div>
+      <div class="page-actions">
+        <button class="btn btn-secondary" onclick="exportTransactionsCSV()">${icon('download')} Export CSV</button>
+        <button class="btn btn-primary" onclick="openTxnModal()">${icon('plus')} Add Transaction</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab ${acctTab==='overview'?'active':''}" onclick="acctTab='overview'; renderAccounting(document.getElementById('pageContent'))">Overview</div>
+      <div class="tab ${acctTab==='income'?'active':''}" onclick="acctTab='income'; renderAccounting(document.getElementById('pageContent'))">Income</div>
+      <div class="tab ${acctTab==='expenses'?'active':''}" onclick="acctTab='expenses'; renderAccounting(document.getElementById('pageContent'))">Expenses</div>
+    </div>
+    <div id="acctContent"></div>
+  `;
+  renderAcctContent();
+}
+
+function renderAcctContent(){
+  const org = currentOrg();
+  const txns = Object.values(org.transactions);
+  const content = document.getElementById('acctContent');
+  const income = txns.filter(t=>t.type!=='expense');
+  const expenses = txns.filter(t=>t.type==='expense');
+  const totalIncome = income.reduce((s,t)=>s+t.amount,0);
+  const totalExpense = expenses.reduce((s,t)=>s+t.amount,0);
+  const net = totalIncome - totalExpense;
+
+  if(acctTab==='overview'){
+    const byCategory = {};
+    income.forEach(t=>{ byCategory[t.category] = (byCategory[t.category]||0) + t.amount; });
+    const expByCategory = {};
+    expenses.forEach(t=>{ expByCategory[t.category] = (expByCategory[t.category]||0) + t.amount; });
+
+    content.innerHTML = `
+      <div class="kpi-grid">
+        <div class="card kpi-card"><div class="kpi-label">Total Income</div><div class="kpi-value" style="color:var(--success);">${fmtMoney(totalIncome, org.settings.currency)}</div></div>
+        <div class="card kpi-card"><div class="kpi-label">Total Expenses</div><div class="kpi-value" style="color:var(--danger);">${fmtMoney(totalExpense, org.settings.currency)}</div></div>
+        <div class="card kpi-card"><div class="kpi-label">Net Balance</div><div class="kpi-value" style="color:${net>=0?'var(--success)':'var(--danger)'};">${fmtMoney(net, org.settings.currency)}</div></div>
+        <div class="card kpi-card"><div class="kpi-label">Transactions</div><div class="kpi-value">${txns.length}</div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="card panel">
+          <div class="panel-head"><h3>Income by Category</h3></div>
+          ${Object.keys(byCategory).length===0 ? '<p style="color:var(--ink-faint); font-size:13.5px;">No income recorded.</p>' :
+          Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>{
+            const pct = totalIncome ? Math.round(amt/totalIncome*100) : 0;
+            return `<div style="margin-bottom:14px;">
+              <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;"><span style="font-weight:600;">${escapeHtml(cat)}</span><span>${fmtMoney(amt,org.settings.currency)}</span></div>
+              <div style="height:6px; background:var(--line-soft); border-radius:10px; overflow:hidden;"><div style="height:100%; width:${pct}%; background:var(--success); border-radius:10px;"></div></div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="card panel">
+          <div class="panel-head"><h3>Expenses by Category</h3></div>
+          ${Object.keys(expByCategory).length===0 ? '<p style="color:var(--ink-faint); font-size:13.5px;">No expenses recorded.</p>' :
+          Object.entries(expByCategory).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>{
+            const pct = totalExpense ? Math.round(amt/totalExpense*100) : 0;
+            return `<div style="margin-bottom:14px;">
+              <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;"><span style="font-weight:600;">${escapeHtml(cat)}</span><span>${fmtMoney(amt,org.settings.currency)}</span></div>
+              <div style="height:6px; background:var(--line-soft); border-radius:10px; overflow:hidden;"><div style="height:100%; width:${pct}%; background:var(--danger); border-radius:10px;"></div></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  } else {
+    const list = (acctTab==='income' ? income : expenses).sort((a,b)=>new Date(b.date)-new Date(a.date));
+    content.innerHTML = `
+      <div class="card" style="overflow-x:auto;">
+        ${list.length===0 ? `<div class="empty-state">${icon('accounting')}<h4>No ${acctTab} recorded</h4></div>` : `
+        <table>
+          <thead><tr><th>Date</th><th>Category</th><th>Member</th><th>Note</th><th style="text-align:right;">Amount</th><th></th></tr></thead>
+          <tbody>
+            ${list.map(t=>{
+              const m = t.memberId ? org.members[t.memberId] : null;
+              return `<tr>
+                <td>${fmtDate(t.date)}</td>
+                <td>${escapeHtml(t.category)}</td>
+                <td>${m ? escapeHtml(m.name) : '—'}</td>
+                <td style="color:var(--ink-faint);">${escapeHtml(t.note||'—')}</td>
+                <td style="text-align:right; font-weight:700; color:${t.type==='expense'?'var(--danger)':'var(--success)'};">${t.type==='expense'?'−':'+'}${fmtMoney(t.amount,org.settings.currency)}</td>
+                <td><button class="btn-icon btn-ghost" onclick="deleteTxn('${t.id}')">${icon('trash')}</button></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`}
+      </div>
+    `;
+  }
+}
+
+function openTxnModal(){
+  const org = currentOrg();
+  const members = Object.values(org.members);
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'txnModalBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Add Transaction</h3><button class="btn-icon btn-ghost" onclick="closeModal('txnModalBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <div class="field"><label>Type</label>
+          <select id="tfType" onchange="document.getElementById('tfMemberField').style.display = this.value==='expense'?'none':'block';">
+            <option value="dues">Membership Dues</option>
+            <option value="donation">Donation / Sponsorship</option>
+            <option value="event">Event Ticket Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Category</label><input type="text" id="tfCategory" placeholder="e.g. Membership Dues, Office Rental"></div>
+          <div class="field"><label>Amount (${org.settings.currency})</label><input type="number" id="tfAmount" min="0" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="field" id="tfMemberField"><label>Member (optional)</label>
+          <select id="tfMember"><option value="">— None —</option>${members.map(m=>`<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Date</label><input type="date" id="tfDate" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="field"><label>Note</label><input type="text" id="tfNote" placeholder="Optional note"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('txnModalBackdrop')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTxn()">Save Transaction</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function saveTxn(){
+  const org = currentOrg();
+  const type = document.getElementById('tfType').value;
+  const category = document.getElementById('tfCategory').value.trim();
+  const amount = Number(document.getElementById('tfAmount').value);
+  if(!category || !amount){ toast('Category and amount are required', 'error'); return; }
+  const id = uid('txn_');
+  org.transactions[id] = {
+    id, type, category, amount,
+    memberId: type==='expense' ? null : (document.getElementById('tfMember').value || null),
+    date: new Date(document.getElementById('tfDate').value).toISOString(),
+    note: document.getElementById('tfNote').value.trim(),
+    status:'paid'
+  };
+  persist();
+  closeModal('txnModalBackdrop');
+  if(currentPage==='accounting') renderAcctContent();
+  toast('Transaction recorded', 'success');
+}
+
+function deleteTxn(txnId){
+  if(!confirm('Delete this transaction?')) return;
+  const org = currentOrg();
+  delete org.transactions[txnId];
+  persist();
+  renderAcctContent();
+  toast('Transaction deleted');
+}
+
+function exportTransactionsCSV(){
+  const org = currentOrg();
+  const txns = Object.values(org.transactions).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  let csv = 'Date,Type,Category,Member,Amount,Note\n';
+  txns.forEach(t=>{
+    const m = t.memberId ? org.members[t.memberId] : null;
+    csv += [fmtDate(t.date), t.type, t.category, m?m.name:'', t.amount, t.note||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',') + '\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${org.name.replace(/\s+/g,'_')}_transactions.csv`;
+  a.click();
+  toast('CSV exported', 'success');
+}
+
+/* ============================================================
+   COMMITTEES MODULE
+   ============================================================ */
+function renderCommittees(el){
+  const org = currentOrg();
+  el.innerHTML = `
+    <div class="page-head">
+      <div><h1>Committees</h1><div class="sub">${Object.keys(org.committees).length} committees tracked</div></div>
+      <div class="page-actions"><button class="btn btn-primary" onclick="openCommitteeModal()">${icon('plus')} New Committee</button></div>
+    </div>
+    <div id="committeesGrid"></div>
+  `;
+  renderCommitteesGrid();
+}
+
+function renderCommitteesGrid(){
+  const org = currentOrg();
+  const grid = document.getElementById('committeesGrid');
+  const committees = Object.values(org.committees);
+  if(committees.length===0){
+    grid.innerHTML = `<div class="empty-state">${icon('committee')}<h4>No committees yet</h4><p>Create a board or committee to track roles and terms.</p></div>`;
+    return;
+  }
+  grid.innerHTML = committees.map(c=>`
+    <div class="card panel">
+      <div class="panel-head">
+        <div><h3>${escapeHtml(c.name)}</h3><div style="font-size:13px; color:var(--ink-faint); margin-top:2px;">${escapeHtml(c.description||'')}</div></div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-sm btn-secondary" onclick="openAddCommitteeMemberModal('${c.id}')">${icon('plus')} Add Member</button>
+          <button class="btn-icon btn-ghost" onclick="deleteCommittee('${c.id}')">${icon('trash')}</button>
+        </div>
+      </div>
+      ${c.members.length===0 ? `<p style="color:var(--ink-faint); font-size:13.5px;">No members assigned.</p>` : `
+      <table>
+        <thead><tr><th>Member</th><th>Role</th><th>Term</th><th></th></tr></thead>
+        <tbody>
+          ${c.members.map((cm,idx)=>{
+            const m = org.members[cm.memberId];
+            if(!m) return '';
+            const termActive = new Date(cm.termEnd) >= new Date();
+            return `<tr>
+              <td><div style="display:flex; align-items:center; gap:10px;"><div class="avatar" style="background:${avatarColor(m.name)}; width:30px; height:30px; font-size:11px;">${initials(m.name)}</div>${escapeHtml(m.name)}</div></td>
+              <td><span class="pill pill-brand">${escapeHtml(cm.role)}</span></td>
+              <td>${fmtDateShort(cm.termStart)} – ${fmtDateShort(cm.termEnd)} ${!termActive ? '<span class="pill pill-danger" style="margin-left:6px;">Ended</span>':''}</td>
+              <td><button class="btn-icon btn-ghost" onclick="removeCommitteeMember('${c.id}', ${idx})">${icon('trash')}</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`}
+    </div>
+  `).join('');
+}
+
+function openCommitteeModal(){
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'committeeModalBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>New Committee</h3><button class="btn-icon btn-ghost" onclick="closeModal('committeeModalBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <div class="field"><label>Committee name</label><input type="text" id="cfName" placeholder="e.g. Events Committee"></div>
+        <div class="field"><label>Description</label><textarea id="cfDesc" rows="2" placeholder="What does this committee do?"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('committeeModalBackdrop')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveCommittee()">Create Committee</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function saveCommittee(){
+  const org = currentOrg();
+  const name = document.getElementById('cfName').value.trim();
+  if(!name){ toast('Name is required', 'error'); return; }
+  const id = uid('com_');
+  org.committees[id] = { id, name, description: document.getElementById('cfDesc').value.trim(), members:[] };
+  persist();
+  closeModal('committeeModalBackdrop');
+  renderCommitteesGrid();
+  toast('Committee created', 'success');
+}
+
+function deleteCommittee(committeeId){
+  if(!confirm('Delete this committee?')) return;
+  const org = currentOrg();
+  delete org.committees[committeeId];
+  persist();
+  renderCommitteesGrid();
+  toast('Committee deleted');
+}
+
+function openAddCommitteeMemberModal(committeeId){
+  const org = currentOrg();
+  const members = Object.values(org.members);
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'addCommitteeMemberBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>Add Committee Member</h3><button class="btn-icon btn-ghost" onclick="closeModal('addCommitteeMemberBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <div class="field"><label>Member</label>
+          <select id="cmMember">${members.map(m=>`<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Role</label><input type="text" id="cmRole" placeholder="e.g. Chair, Treasurer, Member"></div>
+        <div class="field-row">
+          <div class="field"><label>Term start</label><input type="date" id="cmStart" value="${new Date().toISOString().slice(0,10)}"></div>
+          <div class="field"><label>Term end</label><input type="date" id="cmEnd" value="${new Date(Date.now()+365*86400000).toISOString().slice(0,10)}"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('addCommitteeMemberBackdrop')">Cancel</button>
+        <button class="btn btn-primary" onclick="addCommitteeMember('${committeeId}')">Add</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function addCommitteeMember(committeeId){
+  const org = currentOrg();
+  const role = document.getElementById('cmRole').value.trim();
+  if(!role){ toast('Role is required', 'error'); return; }
+  org.committees[committeeId].members.push({
+    memberId: document.getElementById('cmMember').value,
+    role,
+    termStart: document.getElementById('cmStart').value,
+    termEnd: document.getElementById('cmEnd').value,
+  });
+  persist();
+  closeModal('addCommitteeMemberBackdrop');
+  renderCommitteesGrid();
+  toast('Committee member added', 'success');
+}
+
+function removeCommitteeMember(committeeId, idx){
+  const org = currentOrg();
+  org.committees[committeeId].members.splice(idx,1);
+  persist();
+  renderCommitteesGrid();
+  toast('Removed from committee');
+}
+
+/* ============================================================
+   SETTINGS MODULE
+   ============================================================ */
+let settingsTab = 'org';
+
+function renderSettings(el){
+  const org = currentOrg();
+  el.innerHTML = `
+    <div class="page-head"><div><h1>Settings</h1><div class="sub">Manage your organization, tiers, and billing</div></div></div>
+    <div class="tabs">
+      <div class="tab ${settingsTab==='org'?'active':''}" onclick="settingsTab='org'; renderSettings(document.getElementById('pageContent'))">Organization</div>
+      <div class="tab ${settingsTab==='tiers'?'active':''}" onclick="settingsTab='tiers'; renderSettings(document.getElementById('pageContent'))">Membership Tiers</div>
+      <div class="tab ${settingsTab==='billing'?'active':''}" onclick="settingsTab='billing'; renderSettings(document.getElementById('pageContent'))">Billing &amp; Plan</div>
+    </div>
+    <div id="settingsContent"></div>
+  `;
+  renderSettingsContent();
+}
+
+function renderSettingsContent(){
+  const org = currentOrg();
+  const content = document.getElementById('settingsContent');
+  if(settingsTab==='org'){
+    content.innerHTML = `
+      <div class="card panel" style="max-width:560px;">
+        <div class="field"><label>Organization name</label><input type="text" id="ofName" value="${escapeHtml(org.name)}"></div>
+        <div class="field"><label>Organization type</label>
+          <select id="ofType">
+            ${['Chamber of Commerce','Professional Society','Member Club','Association','Alumni Association','Other'].map(t=>`<option ${org.type===t?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>Currency</label>
+          <select id="ofCurrency">
+            ${['RM','SGD','USD'].map(c=>`<option ${org.settings.currency===c?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="saveOrgSettings()">Save Changes</button>
+      </div>
+    `;
+  } else if(settingsTab==='tiers'){
+    content.innerHTML = `
+      <div class="page-actions" style="margin-bottom:16px; justify-content:flex-start;"><button class="btn btn-secondary btn-sm" onclick="openTierModal()">${icon('plus')} Add Tier</button></div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px;">
+        ${org.settings.tiers.map(t=>`
+          <div class="card" style="padding:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <span class="tier-badge" style="background:${t.color};">${escapeHtml(t.name)}</span>
+              <div style="display:flex; gap:6px;">
+                <button class="btn-icon btn-ghost" onclick="openTierModal('${t.id}')">${icon('edit')}</button>
+                <button class="btn-icon btn-ghost" onclick="deleteTier('${t.id}')">${icon('trash')}</button>
+              </div>
+            </div>
+            <div style="font-family:var(--font-display); font-size:20px; font-weight:600; margin-bottom:6px;">${fmtMoney(t.priceYear, org.settings.currency)}<span style="font-size:13px; font-weight:400; color:var(--ink-faint);">/year</span></div>
+            <div style="font-size:13px; color:var(--ink-soft);">${escapeHtml(t.benefits||'')}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } else {
+    const subStatus = org.subscriptionStatus || 'active';
+    const subMeta = SUBSCRIPTION_LABELS[subStatus] || SUBSCRIPTION_LABELS.active;
+    content.innerHTML = `
+      <div class="card panel" style="max-width:560px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+          <div>
+            <div style="font-size:13px; color:var(--ink-faint); font-weight:600;">CURRENT PLAN</div>
+            <div style="font-family:var(--font-display); font-size:24px; font-weight:600; text-transform:capitalize;">${escapeHtml(org.plan)}</div>
+          </div>
+          <span class="pill ${subMeta.pill}" style="font-size:13px; padding:6px 14px;">${subMeta.label}</span>
+        </div>
+        <div style="font-size:13px; color:var(--ink-faint); margin-bottom:20px;">Next payment due: <b style="color:var(--ink-soft);">${org.nextPaymentDue ? fmtDate(org.nextPaymentDue) : '—'}</b></div>
+        <div style="border-top:1px solid var(--line-soft); padding-top:18px;">
+          <p style="font-size:13.5px; color:var(--ink-soft); margin-bottom:16px;">Upgrade or change your plan to unlock more members and features.</p>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-secondary" onclick="changePlan('starter')">Starter — RM149/mo</button>
+            <button class="btn btn-primary" onclick="changePlan('growth')">Growth — RM399/mo</button>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--line-soft); padding-top:18px; margin-top:18px;">
+          <p style="font-size:13px; color:var(--ink-faint);">Questions about billing? <a href="mailto:web3studiotech@gmail.com?subject=AssoHub Billing - ${encodeURIComponent(org.name)}" style="color:var(--brand); font-weight:600;">Contact us</a></p>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function saveOrgSettings(){
+  const org = currentOrg();
+  org.name = document.getElementById('ofName').value.trim();
+  org.type = document.getElementById('ofType').value;
+  org.settings.currency = document.getElementById('ofCurrency').value;
+  org.logoInitial = org.name.charAt(0).toUpperCase();
+  persist();
+  renderDashboardShell();
+  navigateTo('settings');
+  toast('Organization settings saved', 'success');
+}
+
+function changePlan(plan){
+  const org = currentOrg();
+  org.plan = plan;
+  persist();
+  renderDashboardShell();
+  navigateTo('settings');
+  toast('Plan updated to '+plan, 'success');
+}
+
+function openTierModal(tierId){
+  const org = currentOrg();
+  const t = tierId ? org.settings.tiers.find(x=>x.id===tierId) : null;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'tierModalBackdrop';
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>${t?'Edit Tier':'Add Tier'}</h3><button class="btn-icon btn-ghost" onclick="closeModal('tierModalBackdrop')">${icon('close')}</button></div>
+      <div class="modal-body">
+        <div class="field"><label>Tier name</label><input type="text" id="tfTName" value="${t?escapeHtml(t.name):''}" placeholder="e.g. Gold"></div>
+        <div class="field-row">
+          <div class="field"><label>Annual price</label><input type="number" id="tfTPrice" value="${t?t.priceYear:0}" min="0"></div>
+          <div class="field"><label>Color</label><input type="color" id="tfTColor" value="${t?t.color:'#3D5AFE'}" style="height:42px; padding:4px;"></div>
+        </div>
+        <div class="field"><label>Benefits</label><textarea id="tfTBenefits" rows="2" placeholder="What members get at this tier">${t?escapeHtml(t.benefits||''):''}</textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('tierModalBackdrop')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTier('${t?t.id:''}')">Save Tier</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function saveTier(tierId){
+  const org = currentOrg();
+  const name = document.getElementById('tfTName').value.trim();
+  if(!name){ toast('Name is required', 'error'); return; }
+  const data = {
+    name, priceYear: Number(document.getElementById('tfTPrice').value)||0,
+    color: document.getElementById('tfTColor').value,
+    benefits: document.getElementById('tfTBenefits').value.trim(),
+  };
+  if(tierId){
+    Object.assign(org.settings.tiers.find(t=>t.id===tierId), data);
+  } else {
+    org.settings.tiers.push({ id: uid('tier_'), ...data });
+  }
+  persist();
+  closeModal('tierModalBackdrop');
+  renderSettingsContent();
+  toast('Tier saved', 'success');
+}
+
+function deleteTier(tierId){
+  const org = currentOrg();
+  if(org.settings.tiers.length<=1){ toast('You must have at least one tier', 'error'); return; }
+  if(!confirm('Delete this tier? Members on this tier will need to be reassigned.')) return;
+  org.settings.tiers = org.settings.tiers.filter(t=>t.id!==tierId);
+  persist();
+  renderSettingsContent();
+  toast('Tier deleted');
+}
+
+/* ============================================================
+   APP INIT
+   ============================================================ */
+function initApp(){
+  renderLanding();
+  if(SESSION && SESSION.role === 'platformAdmin'){
+    enterPlatformAdmin();
+  } else if(SESSION && DB.orgs[SESSION.orgId]){
+    enterDashboard();
+  }
+  document.addEventListener('keydown', e=>{
+    if(e.key === 'Escape'){
+      if(_qrScanState.active) closeQRScanner();
+      document.querySelectorAll('.modal-backdrop').forEach(m=>m.remove());
+    }
+  });
+}
+initApp();
+</script>
+</body>
+</html>
