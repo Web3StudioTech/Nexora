@@ -207,7 +207,17 @@ tbody tr:hover{ background:var(--line-soft); }
    ============================================================ */
 const SUPABASE_URL = 'https://vtsbeecjtowgglljsazc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0c2JlZWNqdG93Z2dsbGpzYXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1MDk4NDksImV4cCI6MjA5ODA4NTg0OX0.Y1nxc5vuRHiIe4hkKZ11J-cXc2NJV1vvqcogQWFh4kQ';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Safe Supabase init — falls back gracefully if CDN not loaded yet
+let sb = null;
+function initSupabase(){
+  try {
+    if(window.supabase && window.supabase.createClient){
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      return true;
+    }
+  } catch(e){ console.warn('Supabase not ready:', e); }
+  return false;
+}
 
 /* ============================================================
    ASSOHUB — Core State & Utilities
@@ -1104,6 +1114,19 @@ async function handleLogin(e){
 
   try {
     // Try Supabase auth first
+    if(!sb){ 
+      // Supabase not available - use localStorage demo accounts only
+      const user = DB.users[email];
+      if(!user || user.password !== password){
+        toast('Invalid email or password', 'error');
+        btn.innerHTML = 'Log in'; btn.disabled = false;
+        return;
+      }
+      SESSION = { email: user.email, orgId: user.orgId, name: user.name, role: user.role, divisionId: user.divisionId||null, memberId: user.memberId||null, mode: 'local' };
+      setSession(SESSION);
+      routeByRole(SESSION);
+      return;
+    }
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
 
     if(error){
@@ -5172,7 +5195,21 @@ async function initApp(){
     }
   });
 }
-initApp();
+// Wait for Supabase CDN to load before starting the app
+function startApp(){
+  if(initSupabase()){
+    initApp();
+  } else {
+    // Retry after short delay if CDN not loaded yet
+    setTimeout(startApp, 100);
+  }
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  startApp();
+}
 </script>
 
 <!-- ===== NEXORA AI BOT ===== -->
