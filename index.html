@@ -9,7 +9,22 @@
 <meta name="theme-color" content="#3D5AFE">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* Load Supabase from CDN with multiple fallbacks */
+(function(){
+  function loadScript(url, next){
+    var s = document.createElement('script');
+    s.src = url;
+    s.onload = function(){ window._sbLoaded = true; };
+    s.onerror = function(){ if(next) loadScript(next, null); };
+    document.head.appendChild(s);
+  }
+  loadScript(
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
+    'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js'
+  );
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
 <style>
@@ -5237,13 +5252,23 @@ async function initApp(){
     // Landing page is already rendered - user can log in manually
   }
 }
-// Wait for Supabase CDN to load before starting the app
+// Start app - try Supabase CDN, but don't wait forever
+let _sbRetries = 0;
+const _sbMaxRetries = 30; // 3 seconds max wait
+
 function startApp(){
   if(initSupabase()){
+    // Supabase loaded successfully
     initApp();
-  } else {
-    // Retry after short delay if CDN not loaded yet
+  } else if(_sbRetries < _sbMaxRetries){
+    // Keep retrying for up to 3 seconds
+    _sbRetries++;
     setTimeout(startApp, 100);
+  } else {
+    // Supabase CDN failed to load - run in localStorage-only mode
+    console.warn('Supabase CDN not available - running in offline/demo mode');
+    sb = null;
+    initApp(); // initApp handles sb=null gracefully
   }
 }
 
