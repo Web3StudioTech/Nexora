@@ -10364,22 +10364,15 @@ window.onerror = function(msg, src, line, col, err){
 };
 const SUPABASE_URL = 'https://vtsbeecjtowgglljsazc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0c2JlZWNqdG93Z2dsbGpzYXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1MDk4NDksImV4cCI6MjA5ODA4NTg0OX0.Y1nxc5vuRHiIe4hkKZ11J-cXc2NJV1vvqcogQWFh4kQ';
-// sb initialized to null — set properly by initSupabase() when startApp() runs
+// Initialize Supabase client
+// var supabase is declared in the previous script block — available on window
 let sb = null;
-function initSupabase(){
-  try {
-    // The bundled UMD exposes 'supabase' as a local var, not window.supabase
-    // Check both possibilities
-    const sb_lib = (typeof supabase !== 'undefined' && supabase && supabase.createClient) ? supabase
-                 : (window.supabase && window.supabase.createClient) ? window.supabase
-                 : null;
-    if(sb_lib){
-      sb = sb_lib.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('Supabase initialized ✅');
-      return true;
-    }
-  } catch(e){ console.warn('Supabase init error:', e); }
-  return false;
+try {
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  console.log('Supabase ready ✅');
+} catch(e) {
+  console.warn('Supabase init failed, running in demo mode:', e);
+  sb = null;
 }
 
 /* ============================================================
@@ -15379,30 +15372,11 @@ async function initApp(){
     // Landing page is already rendered - user can log in manually
   }
 }
-// Start app - try Supabase CDN, but don't wait forever
-let _sbRetries = 0;
-const _sbMaxRetries = 30; // 3 seconds max wait
-
-function startApp(){
-  if(initSupabase()){
-    // Supabase loaded successfully
-    initApp();
-  } else if(_sbRetries < _sbMaxRetries){
-    // Keep retrying for up to 3 seconds
-    _sbRetries++;
-    setTimeout(startApp, 100);
-  } else {
-    // Supabase CDN failed to load - run in localStorage-only mode
-    console.warn('Supabase CDN not available - running in offline/demo mode');
-    sb = null;
-    initApp(); // initApp handles sb=null gracefully
-  }
-}
-
+// Start the app — Supabase already initialized above (or null if failed)
 if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', startApp);
+  document.addEventListener('DOMContentLoaded', initApp);
 } else {
-  startApp();
+  initApp();
 }
 </script>
 
