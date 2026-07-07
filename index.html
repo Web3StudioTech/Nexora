@@ -11112,7 +11112,7 @@ function setLang(lang) {
   });
   if(active === 'view-landing') renderLanding();
   else if(active === 'view-auth') renderAuth(window._lastAuthMode || 'login');
-  else if(active === 'view-dashboard') renderDashboard();
+  else if(active === 'view-dashboard') { renderDashboardShell(); navigateTo(currentPage || 'overview'); }
   else if(active === 'view-member-portal') enterMemberPortal();
   else if(active === 'view-division-leader') enterDivisionLeaderView();
   updateLangButtons();
@@ -12359,14 +12359,14 @@ async function savePaymentDue(orgId){
    DASHBOARD APP SHELL
    ============================================================ */
 const NAV_ITEMS = [
-  { id:'overview', label:'Dashboard', icon:'dashboard' },
-  { id:'members', label:'Members', icon:'members' },
-  { id:'events', label:'Events', icon:'events' },
-  { id:'loyalty', label:'Loyalty', icon:'loyalty' },
-  { id:'accounting', label:'Accounting', icon:'accounting' },
-  { id:'committees', label:'Committees', icon:'committee' },
-  { id:'divisions', label:'Divisions', icon:'building' },
-  { id:'settings', label:'Settings', icon:'settings' },
+  { id:'overview', label:()=>tr('dash_overview'), icon:'dashboard' },
+  { id:'members', label:()=>tr('mod_members'), icon:'members' },
+  { id:'events', label:()=>tr('mod_events'), icon:'events' },
+  { id:'loyalty', label:()=>tr('mod_loyalty'), icon:'loyalty' },
+  { id:'accounting', label:()=>tr('mod_accounting'), icon:'accounting' },
+  { id:'committees', label:()=>tr('mod_committees'), icon:'committee' },
+  { id:'divisions', label:()=>tr('mod_divisions'), icon:'building' },
+  { id:'settings', label:()=>tr('mod_settings'), icon:'settings' },
 ];
 let currentPage = 'overview';
 
@@ -12490,7 +12490,7 @@ function renderDashboardShell(){
       <div class="topbar">
         <div class="topbar-title" id="topbarTitle">${tr("dash_overview")}</div>
         <div class="topbar-actions">
-          <div class="search-box">${icon('search')}<input type="text" placeholder="Search members, events..." id="globalSearch"></div>
+          <div class="search-box">${icon('search')}<input type="text" placeholder="Search..." id="globalSearch"></div>
           <button class="icon-btn">${icon('bell')}<span class="notif-dot"></span></button>
         </div>
       </div>
@@ -12541,7 +12541,7 @@ function renderSidebarNav(){
 function navigateTo(page){
   currentPage = page;
   renderSidebarNav();
-  document.getElementById('topbarTitle').textContent = NAV_ITEMS.find(n=>n.id===page)?.label() || '';
+  document.getElementById('topbarTitle').textContent = (NAV_ITEMS.find(n=>n.id===page)?.label || (()=>''))();
   const content = document.getElementById('pageContent');
   const org = currentOrg();
 
