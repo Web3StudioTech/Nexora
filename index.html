@@ -10365,6 +10365,249 @@ window.onerror = function(msg, src, line, col, err){
 };
 const SUPABASE_URL = 'https://vtsbeecjtowgglljsazc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0c2JlZWNqdG93Z2dsbGpzYXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1MDk4NDksImV4cCI6MjA5ODA4NTg0OX0.Y1nxc5vuRHiIe4hkKZ11J-cXc2NJV1vvqcogQWFh4kQ';
+
+/* ============================================================
+   NEXORA i18n — Trilingual Engine
+   Languages: en (default), ms (Malay), zh (Mandarin)
+   Usage: t('key') returns string in current language
+   ============================================================ */
+
+let LANG = localStorage.getItem('nexora_lang') || 'en';
+
+const I18N = {
+  en: {
+    // Navigation
+    nav_features: 'Features',
+    nav_pricing: 'Pricing',
+    nav_login: 'Log in',
+    nav_start: 'Start free trial',
+    // Hero
+    hero_badge: 'Built for Malaysian Associations',
+    hero_title_1: 'Run Your Association.',
+    hero_title_2: 'Effortlessly.',
+    hero_desc: 'Nexora is the all-in-one membership management platform built for Malaysian chambers of commerce, professional societies, and member clubs.',
+    hero_cta_primary: 'Start free 14-day trial',
+    hero_cta_secondary: 'See how it works',
+    hero_no_cc: 'No credit card required',
+    // Features
+    feat_title: 'Everything your association needs',
+    feat_subtitle: 'From member registration to event management, Nexora handles it all so you can focus on your community.',
+    feat_members: 'Member Management',
+    feat_members_desc: 'Register, track and manage all your members with digital profiles, renewal reminders and self-service portals.',
+    feat_events: 'Events & Registration',
+    feat_events_desc: 'Create events, manage registrations, track attendance and generate reports — all in one place.',
+    feat_accounting: 'Dues & Accounting',
+    feat_accounting_desc: 'Collect membership fees, track payments and generate financial reports with full audit trails.',
+    feat_divisions: 'Divisions & Committees',
+    feat_divisions_desc: 'Organise your association into divisions and committees with their own leaders and member lists.',
+    feat_loyalty: 'Loyalty & Rewards',
+    feat_loyalty_desc: 'Reward active members with points, badges and recognition to drive engagement and retention.',
+    feat_reports: 'Reports & Analytics',
+    feat_reports_desc: 'Get instant insights into membership trends, event attendance and financial performance.',
+    // Pricing
+    price_title: 'Simple, transparent pricing',
+    price_subtitle: 'No hidden fees. No long-term contracts. Cancel anytime.',
+    price_starter: 'Starter',
+    price_growth: 'Growth',
+    price_mo: '/mo',
+    price_yr: '/yr',
+    price_save: 'Save 2 months',
+    price_monthly: 'Monthly',
+    price_annual: 'Annual',
+    price_cta: 'Start free trial',
+    price_contact: 'Contact sales',
+    price_popular: 'Most Popular',
+    // Auth
+    auth_login: 'Log in to Nexora',
+    auth_signup: 'Start your free trial',
+    auth_email: 'Email address',
+    auth_password: 'Password',
+    auth_org: 'Organisation name',
+    auth_name: 'Your name',
+    auth_login_btn: 'Log in',
+    auth_signup_btn: 'Start free trial',
+    auth_no_account: "Don't have an account?",
+    auth_have_account: 'Already have an account?',
+    auth_forgot: 'Forgot password?',
+    // Dashboard
+    dash_members: 'Members',
+    dash_events: 'Events',
+    dash_accounting: 'Accounting',
+    dash_divisions: 'Divisions',
+    dash_loyalty: 'Loyalty',
+    dash_reports: 'Reports',
+    dash_settings: 'Settings',
+    dash_logout: 'Log out',
+    dash_welcome: 'Welcome back',
+    dash_total_members: 'Total Members',
+    dash_active: 'Active',
+    dash_pending: 'Pending',
+    dash_expired: 'Expired',
+    // Common
+    btn_save: 'Save',
+    btn_cancel: 'Cancel',
+    btn_delete: 'Delete',
+    btn_edit: 'Edit',
+    btn_add: 'Add',
+    btn_close: 'Close',
+    btn_export: 'Export',
+    btn_search: 'Search',
+    btn_filter: 'Filter',
+    btn_view: 'View',
+    btn_back: 'Back',
+    lbl_name: 'Name',
+    lbl_email: 'Email',
+    lbl_phone: 'Phone',
+    lbl_status: 'Status',
+    lbl_date: 'Date',
+    lbl_amount: 'Amount',
+    lbl_type: 'Type',
+    lbl_notes: 'Notes',
+    lbl_actions: 'Actions',
+    status_active: 'Active',
+    status_pending: 'Pending',
+    status_expired: 'Expired',
+    status_inactive: 'Inactive',
+  },
+  ms: {
+    // Navigation
+    nav_features: 'Ciri-ciri',
+    nav_pricing: 'Harga',
+    nav_login: 'Log masuk',
+    nav_start: 'Mulakan percubaan percuma',
+    // Hero
+    hero_badge: 'Dibina untuk Persatuan Malaysia',
+    hero_title_1: 'Urus Persatuan Anda.',
+    hero_title_2: 'Dengan Mudah.',
+    hero_desc: 'Nexora ialah platform pengurusan keahlian semua-dalam-satu yang dibina untuk dewan perniagaan, persatuan profesional dan kelab ahli Malaysia.',
+    hero_cta_primary: 'Mulakan percubaan percuma 14 hari',
+    hero_cta_secondary: 'Lihat cara ia berfungsi',
+    hero_no_cc: 'Tiada kad kredit diperlukan',
+    // Features
+    feat_title: 'Semua yang persatuan anda perlukan',
+    feat_subtitle: 'Dari pendaftaran ahli hingga pengurusan acara, Nexora mengendalikan semuanya supaya anda boleh fokus kepada komuniti anda.',
+    feat_members: 'Pengurusan Ahli',
+    feat_members_desc: 'Daftar, jejak dan urus semua ahli anda dengan profil digital, peringatan pembaharuan dan portal layan diri.',
+    feat_events: 'Acara & Pendaftaran',
+    feat_events_desc: 'Cipta acara, urus pendaftaran, jejak kehadiran dan jana laporan — semuanya di satu tempat.',
+    feat_accounting: 'Yuran & Perakaunan',
+    feat_accounting_desc: 'Kutip yuran keahlian, jejak pembayaran dan jana laporan kewangan dengan jejak audit lengkap.',
+    feat_divisions: 'Bahagian & Jawatankuasa',
+    feat_divisions_desc: 'Susun persatuan anda kepada bahagian dan jawatankuasa dengan pemimpin dan senarai ahli masing-masing.',
+    feat_loyalty: 'Kesetiaan & Ganjaran',
+    feat_loyalty_desc: 'Ganjari ahli aktif dengan mata, lencana dan pengiktirafan untuk mendorong penglibatan dan pengekalan.',
+    feat_reports: 'Laporan & Analitik',
+    feat_reports_desc: 'Dapatkan pandangan segera tentang trend keahlian, kehadiran acara dan prestasi kewangan.',
+    // Pricing
+    price_title: 'Harga yang mudah dan telus',
+    price_subtitle: 'Tiada bayaran tersembunyi. Tiada kontrak jangka panjang. Batal bila-bila masa.',
+    price_starter: 'Permulaan',
+    price_growth: 'Pertumbuhan',
+    price_mo: '/bln',
+    price_yr: '/thn',
+    price_save: 'Jimat 2 bulan',
+    price_monthly: 'Bulanan',
+    price_annual: 'Tahunan',
+    price_cta: 'Mulakan percubaan percuma',
+    price_contact: 'Hubungi jualan',
+    price_popular: 'Paling Popular',
+    // Auth
+    auth_login: 'Log masuk ke Nexora',
+    auth_signup: 'Mulakan percubaan percuma anda',
+    auth_email: 'Alamat e-mel',
+    auth_password: 'Kata laluan',
+    auth_org: 'Nama organisasi',
+    auth_name: 'Nama anda',
+    auth_login_btn: 'Log masuk',
+    auth_signup_btn: 'Mulakan percubaan percuma',
+    auth_no_account: 'Tiada akaun?',
+    auth_have_account: 'Sudah ada akaun?',
+    auth_forgot: 'Lupa kata laluan?',
+    // Dashboard
+    dash_members: 'Ahli',
+    dash_events: 'Acara',
+    dash_accounting: 'Perakaunan',
+    dash_divisions: 'Bahagian',
+    dash_loyalty: 'Kesetiaan',
+    dash_reports: 'Laporan',
+    dash_settings: 'Tetapan',
+    dash_logout: 'Log keluar',
+    dash_welcome: 'Selamat kembali',
+    dash_total_members: 'Jumlah Ahli',
+    dash_active: 'Aktif',
+    dash_pending: 'Menunggu',
+    dash_expired: 'Tamat tempoh',
+    // Common
+    btn_save: 'Simpan',
+    btn_cancel: 'Batal',
+    btn_delete: 'Padam',
+    btn_edit: 'Edit',
+    btn_add: 'Tambah',
+    btn_close: 'Tutup',
+    btn_export: 'Eksport',
+    btn_search: 'Cari',
+    btn_filter: 'Tapis',
+    btn_view: 'Lihat',
+    btn_back: 'Kembali',
+    lbl_name: 'Nama',
+    lbl_email: 'E-mel',
+    lbl_phone: 'Telefon',
+    lbl_status: 'Status',
+    lbl_date: 'Tarikh',
+    lbl_amount: 'Jumlah',
+    lbl_type: 'Jenis',
+    lbl_notes: 'Nota',
+    lbl_actions: 'Tindakan',
+    status_active: 'Aktif',
+    status_pending: 'Menunggu',
+    status_expired: 'Tamat',
+    status_inactive: 'Tidak aktif',
+  },
+};
+
+function t(key) {
+  const lang = I18N[LANG] || I18N['en'];
+  return lang[key] || I18N['en'][key] || key;
+}
+
+function setLang(lang) {
+  LANG = lang;
+  localStorage.setItem('nexora_lang', lang);
+  // Re-render current view
+  const views = ['view-landing','view-auth','view-dashboard','view-platform-admin','view-member-portal','view-division-leader'];
+  const active = views.find(v => {
+    const el = document.getElementById(v);
+    return el && el.classList.contains('active');
+  });
+  if(active === 'view-landing') renderLanding();
+  else if(active === 'view-auth') renderAuth(window._lastAuthMode || 'login');
+  else if(active === 'view-dashboard') renderDashboard();
+  else if(active === 'view-member-portal') enterMemberPortal();
+  else if(active === 'view-division-leader') enterDivisionLeaderView();
+  updateLangButtons();
+}
+
+function updateLangButtons() {
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('lang-btn-active', btn.dataset.lang === LANG);
+  });
+}
+
+function langSwitcherHTML(theme) {
+  const bg = theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)';
+  const ac = '#5B4FE8';
+  const enBg = LANG==='en' ? ac : 'transparent';
+  const msBg = LANG==='ms' ? ac : 'transparent';
+  const dk = theme === 'dark';
+  const enC = LANG==='en' ? '#fff' : (dk ? 'rgba(255,255,255,0.7)' : '#6B7280');
+  const msC = LANG==='ms' ? '#fff' : (dk ? 'rgba(255,255,255,0.7)' : '#6B7280');
+  const s = 'border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s;';
+  return '<div style="display:flex;gap:4px;align-items:center;background:'+bg+';border-radius:8px;padding:3px;">'
+    + '<button class="lang-btn" data-lang="en" onclick="setLang(String.fromCharCode(101,110))" style="'+s+'background:'+enBg+';color:'+enC+';">EN</button>'
+    + '<button class="lang-btn" data-lang="ms" onclick="setLang(String.fromCharCode(109,115))" style="'+s+'background:'+msBg+';color:'+msC+';">BM</button>'
+    + '</div>';
+}
+
 // Initialize Supabase client
 // var supabase is declared in the previous script block — available on window
 let sb = null;
