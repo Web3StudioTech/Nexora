@@ -10561,6 +10561,7 @@ const I18N = {
     mod_divisions: 'Divisions & Branches',
     mod_loyalty: 'Loyalty & Points',
     mod_settings: 'Settings',
+    mod_reports: 'Reports',
     mod_committees: 'Committees',
     // Module subtitles
     mod_accounting_sub: 'Track dues, donations, and expenses',
@@ -10883,6 +10884,7 @@ const I18N = {
     mod_divisions: 'Bahagian & Cawangan',
     mod_loyalty: 'Kesetiaan & Mata',
     mod_settings: 'Tetapan',
+    mod_reports: 'Laporan',
     mod_committees: 'Jawatankuasa',
     // Module subtitles
     mod_accounting_sub: 'Jejak yuran, derma, dan perbelanjaan',
@@ -11218,6 +11220,7 @@ const I18N = {
     mod_divisions: '分部与分行',
     mod_loyalty: '忠诚度与积分',
     mod_settings: '设置',
+    mod_reports: '报告',
     mod_committees: '委员会',
     mod_accounting_sub: '追踪会费、捐款和开支',
     mod_loyalty_sub: '自定义会员奖励、积分、订阅、赞助和贡献',
@@ -12413,19 +12416,33 @@ async function handleSignup(e){
     // 4. Link user as owner
     await sb.from('org_users').insert({ user_id: authData.user.id, org_id: org.id, role: 'owner' });
 
-    // 5. Create trial subscription
+    // 5. Create subscription (trial or direct active based on platform settings)
+    const trialEnabled = true; // controlled by PA_SETTINGS on platform admin side
+    const trialDays = 14;
+    const now = new Date();
+    const trialEnd = new Date(now.getTime() + trialDays*86400000);
     await sb.from('subscriptions').insert({
       org_id: org.id,
       plan: 'trial',
       billing_cycle: 'monthly',
       status: 'trial',
       amount: 0,
-      trial_start: new Date().toISOString(),
-      trial_end: new Date(Date.now()+14*86400000).toISOString(),
+      trial_start: now.toISOString(),
+      trial_end: trialEnd.toISOString(),
+      next_due_at: trialEnd.toISOString(),
       auto_mode: false
     });
 
-    // 6. Load and enter dashboard
+    // 6. Send welcome email (non-blocking)
+    sendWelcomeEmail({
+      orgName: orgName,
+      ownerName: name,
+      ownerEmail: email,
+      trialEnd: trialEnd.toISOString(),
+      plan: 'trial',
+    }).catch(()=>{});
+
+    // 7. Load and enter dashboard
     await loadOrgFromSupabase(org.id);
     SESSION = { email, name, role:'owner', orgId: org.id, mode:'supabase', supabaseUserId: authData.user.id };
     setSession(SESSION);
@@ -12480,19 +12497,33 @@ function renderPlatformAdmin(){
     </div>
     <div class="pa-body">
       <div class="page-head">
-        <div><h1>All Organizations</h1><div class="sub">Manage subscription status across every customer on the platform</div></div>
-      </div>
-      <div id="paStats"></div>
-      <div class="toolbar">
-        <div class="tabs" style="border-bottom:none; margin-bottom:0;">
-          <div class="tab ${platformAdminFilter==='all'?'active':''}" onclick="platformAdminFilter='all'; renderPlatformAdmin();">${tr('tab_all')}</div>
-          <div class="tab ${platformAdminFilter==='active'?'active':''}" onclick="platformAdminFilter='active'; renderPlatformAdmin();">Active</div>
-          <div class="tab ${platformAdminFilter==='reminder'?'active':''}" onclick="platformAdminFilter='reminder'; renderPlatformAdmin();">Reminder</div>
-          <div class="tab ${platformAdminFilter==='notice'?'active':''}" onclick="platformAdminFilter='notice'; renderPlatformAdmin();">Notice</div>
-          <div class="tab ${platformAdminFilter==='suspended'?'active':''}" onclick="platformAdminFilter='suspended'; renderPlatformAdmin();">Suspended</div>
+        <div><h1>All Organizations</h1><div class="sub">Manage subscriptions across every client on the platform</div></div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div style="display:flex;align-items:center;gap:8px;background:${PA_SETTINGS.trialEnabled?'#DCFCE7':'#FEF2F2'};border:1.5px solid ${PA_SETTINGS.trialEnabled?'#86EFAC':'#FECACA'};border-radius:10px;padding:8px 14px;">
+            <div style="font-size:13px;font-weight:600;color:${PA_SETTINGS.trialEnabled?'#16A34A':'#DC2626'};">
+              ${PA_SETTINGS.trialEnabled?'Trial Mode: ON ('+PA_SETTINGS.trialDays+' days)':'Trial Mode: OFF (Direct activation)'}
+            </div>
+            <button onclick="toggleTrialMode()" style="border:none;background:${PA_SETTINGS.trialEnabled?'#16A34A':'#DC2626'};color:#fff;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">
+              ${PA_SETTINGS.trialEnabled?'Turn Off':'Turn On'}
+            </button>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="openPASettingsModal()" style="display:flex;align-items:center;gap:6px;">${icon('settings')} Platform Settings</button>
         </div>
       </div>
-      <div class="card" style="overflow-x:auto;">
+      <div id="paStats"></div>
+      <div class="toolbar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div class="tabs" style="border-bottom:none; margin-bottom:0;">
+          <div class="tab ${platformAdminFilter==='all'?'active':''}" onclick="platformAdminFilter='all'; renderPlatformAdmin();">${tr('tab_all')}</div>
+          <div class="tab ${platformAdminFilter==='trial'?'active':''}" onclick="platformAdminFilter='trial'; renderPlatformAdmin();">Trial</div>
+          <div class="tab ${platformAdminFilter==='active'?'active':''}" onclick="platformAdminFilter='active'; renderPlatformAdmin();">Active</div>
+          <div class="tab ${platformAdminFilter==='past_due'?'active':''}" onclick="platformAdminFilter='past_due'; renderPlatformAdmin();">Past Due</div>
+          <div class="tab ${platformAdminFilter==='suspended'?'active':''}" onclick="platformAdminFilter='suspended'; renderPlatformAdmin();">Suspended</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="paSearch" placeholder="Search client..." oninput="renderPlatformAdminTable()" style="padding:7px 12px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;width:200px;">
+        </div>
+      </div>
+      <div class="card" style="overflow-x:auto;margin-top:12px;">
         <table id="paOrgsTable"></table>
       </div>
     </div>
@@ -12522,6 +12553,11 @@ function renderPlatformAdminTable(){
   let orgs = Object.values(DB.orgs);
   if(platformAdminFilter !== 'all'){
     orgs = orgs.filter(o => (o.subscriptionStatus||'active') === platformAdminFilter);
+  }
+  const searchEl = document.getElementById('paSearch');
+  if(searchEl && searchEl.value.trim()){
+    const q = searchEl.value.trim().toLowerCase();
+    orgs = orgs.filter(o => o.name.toLowerCase().includes(q) || (o.type||'').toLowerCase().includes(q));
   }
   orgs = orgs.sort((a,b)=> new Date(a.nextPaymentDue||0) - new Date(b.nextPaymentDue||0));
   const table = document.getElementById('paOrgsTable');
@@ -12555,7 +12591,9 @@ function renderPlatformAdminTable(){
           <td>
             <div style="display:flex; gap:6px; align-items:center;">
               <button class="btn btn-primary btn-sm" onclick="openSubscriptionModal('${o.id}')" style="font-size:12px;padding:5px 12px;">Manage</button>
+              <button class="btn btn-secondary btn-sm" onclick="openInvoiceModal('${o.id}')" style="font-size:12px;padding:5px 12px;">${icon('document')} Invoice</button>
               <button class="btn btn-secondary btn-sm" onclick="openBillingHistory('${o.id}')" style="font-size:12px;padding:5px 12px;">History</button>
+              <button class="btn-icon btn-ghost" onclick="sendEmailReminder('${o.id}')" title="Send email reminder">${icon('mail')}</button>
               <button class="btn-icon btn-ghost" onclick="sendWhatsAppReminder('${o.id}')" title="Send WhatsApp reminder">${icon('whatsapp')}</button>
             </div>
           </td>
@@ -12616,6 +12654,22 @@ async function savePaymentDue(orgId){
    SUBSCRIPTION MANAGEMENT FUNCTIONS
    ============================================================ */
 
+// ---- Platform Admin Global Settings ----
+let PA_SETTINGS = JSON.parse(localStorage.getItem('nexora_pa_settings') || JSON.stringify({
+  trialEnabled: true,
+  trialDays: 14,
+  resendApiKey: '',
+  senderEmail: 'billing@nexora.my',
+  senderName: 'Nexora Billing',
+  bankName: 'Hong Leong Bank',
+  bankAccount: 'Matrix Infinity Technology Multimedia',
+  bankNumber: '03000064995',
+}));
+
+function savePA_Settings(){
+  localStorage.setItem('nexora_pa_settings', JSON.stringify(PA_SETTINGS));
+}
+
 // ---- Plan pricing map ----
 const PLAN_PRICES = {
   starter:  { monthly: 149, yearly: 1490 },
@@ -12623,6 +12677,461 @@ const PLAN_PRICES = {
   enterprise:{ monthly: 999, yearly: 9990 },
   trial:    { monthly: 0,   yearly: 0 },
 };
+
+// ---- Trial Mode Toggle ----
+function toggleTrialMode(){
+  PA_SETTINGS.trialEnabled = !PA_SETTINGS.trialEnabled;
+  savePA_Settings();
+  renderPlatformAdmin();
+  toast('Trial mode ' + (PA_SETTINGS.trialEnabled ? 'enabled' : 'disabled'), 'success');
+}
+
+// ---- Platform Settings Modal ----
+function openPASettingsModal(){
+  const b = document.createElement('div');
+  b.className = 'modal-backdrop'; b.id = 'paSettingsModal';
+  b.innerHTML = `
+    <div class="modal" style="max-width:520px;">
+      <div class="modal-header"><h3>${icon('settings')} Platform Settings</h3>
+        <button class="btn-icon btn-ghost" onclick="closeModal('paSettingsModal')">${icon('close')}</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+
+        <div style="background:var(--brand-soft);border-radius:10px;padding:14px;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px;">Trial Settings</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="field">
+              <label>Trial Mode</label>
+              <select id="psTrialEnabled">
+                <option value="1" ${PA_SETTINGS.trialEnabled?'selected':''}>Enabled (new clients get trial)</option>
+                <option value="0" ${!PA_SETTINGS.trialEnabled?'selected':''}>Disabled (direct activation)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Trial Duration (days)</label>
+              <input type="number" id="psTrialDays" value="${PA_SETTINGS.trialDays}" min="1" max="90">
+            </div>
+          </div>
+        </div>
+
+        <div style="border:1.5px solid var(--line);border-radius:10px;padding:14px;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px;">Email Settings (Resend)</div>
+          <div class="field">
+            <label>Resend API Key <span style="font-size:11px;color:var(--ink-faint);">(get free at resend.com)</span></label>
+            <input type="password" id="psResendKey" value="${PA_SETTINGS.resendApiKey}" placeholder="re_xxxxxxxxxxxx">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="field">
+              <label>Sender Email</label>
+              <input type="text" id="psSenderEmail" value="${PA_SETTINGS.senderEmail}" placeholder="billing@nexora.my">
+            </div>
+            <div class="field">
+              <label>Sender Name</label>
+              <input type="text" id="psSenderName" value="${PA_SETTINGS.senderName}" placeholder="Nexora Billing">
+            </div>
+          </div>
+        </div>
+
+        <div style="border:1.5px solid var(--line);border-radius:10px;padding:14px;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px;">Bank Details (for invoices & reminders)</div>
+          <div class="field">
+            <label>Bank Name</label>
+            <input type="text" id="psBankName" value="${PA_SETTINGS.bankName}">
+          </div>
+          <div class="field">
+            <label>Account Name</label>
+            <input type="text" id="psBankAccount" value="${PA_SETTINGS.bankAccount}">
+          </div>
+          <div class="field">
+            <label>Account Number</label>
+            <input type="text" id="psBankNumber" value="${PA_SETTINGS.bankNumber}">
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('paSettingsModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="savePASettings()">Save Settings</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(b);
+}
+
+function savePASettings(){
+  PA_SETTINGS.trialEnabled = document.getElementById('psTrialEnabled').value === '1';
+  PA_SETTINGS.trialDays = parseInt(document.getElementById('psTrialDays').value) || 14;
+  PA_SETTINGS.resendApiKey = document.getElementById('psResendKey').value.trim();
+  PA_SETTINGS.senderEmail = document.getElementById('psSenderEmail').value.trim();
+  PA_SETTINGS.senderName = document.getElementById('psSenderName').value.trim();
+  PA_SETTINGS.bankName = document.getElementById('psBankName').value.trim();
+  PA_SETTINGS.bankAccount = document.getElementById('psBankAccount').value.trim();
+  PA_SETTINGS.bankNumber = document.getElementById('psBankNumber').value.trim();
+  savePA_Settings();
+  closeModal('paSettingsModal');
+  renderPlatformAdmin();
+  toast('Platform settings saved ✓', 'success');
+}
+
+// ---- Core Email Sender (Resend) ----
+async function sendResendEmail({ to, subject, html: htmlBody }){
+  if(!PA_SETTINGS.resendApiKey){
+    console.warn('Resend API key not set');
+    return { ok: false, error: 'No API key' };
+  }
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + PA_SETTINGS.resendApiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: PA_SETTINGS.senderName + ' <' + PA_SETTINGS.senderEmail + '>',
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        html: htmlBody,
+      })
+    });
+    const data = await res.json();
+    return { ok: res.ok, data, error: res.ok ? null : (data.message || 'Send failed') };
+  } catch(err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+// ---- Email Footer (shared) ----
+function emailFooter(){
+  return `
+    <div style="margin-top:32px;padding-top:16px;border-top:1px solid #E5E7EB;text-align:center;font-size:11px;color:#9CA3AF;">
+      © ${new Date().getFullYear()} Nexora by Matrix Infinity Technology Multimedia · 
+      <a href="mailto:${PA_SETTINGS.senderEmail}" style="color:#9CA3AF;">${PA_SETTINGS.senderEmail}</a>
+    </div>`;
+}
+
+// ---- Email Header (shared) ----
+function emailHeader(subtitle){
+  return `
+    <div style="background:linear-gradient(135deg,#5B4FE8 0%,#7C3AED 100%);padding:28px 32px;border-radius:12px 12px 0 0;">
+      <div style="color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">Nexora</div>
+      <div style="color:rgba(255,255,255,0.75);font-size:13px;margin-top:3px;">${subtitle || 'Association Management Platform'}</div>
+    </div>`;
+}
+
+// ---- Welcome Email (fires on signup) ----
+async function sendWelcomeEmail({ orgName, ownerName, ownerEmail, trialEnd, plan }){
+  const trialEndStr = trialEnd ? new Date(trialEnd).toLocaleDateString('en-MY',{day:'numeric',month:'long',year:'numeric'}) : '14 days from today';
+  const planLabel = (plan||'trial').charAt(0).toUpperCase()+(plan||'trial').slice(1);
+
+  const htmlBody = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+      ${emailHeader('Welcome to Nexora!')}
+      <div style="padding:32px;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;">
+
+        <h2 style="color:#111;margin:0 0 6px;font-size:20px;">Welcome, ${escapeHtml(ownerName)}! 🎉</h2>
+        <p style="color:#6B7280;margin:0 0 24px;font-size:14px;">Your organization <strong>${escapeHtml(orgName)}</strong> is now live on Nexora. Here's what you get:</p>
+
+        <div style="display:grid;gap:10px;margin-bottom:24px;">
+          ${[
+            ['👥','Member Management','Register, track and manage all your members'],
+            ['📅','Events & Registration','Create events and manage RSVPs with QR check-in'],
+            ['💰','Dues & Accounting','Track payments and generate financial reports'],
+            ['⭐','Loyalty & Points','Reward active members with points and badges'],
+            ['🏛️','Committees & Divisions','Organize your association structure'],
+          ].map(([emoji,title,desc])=>`
+            <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:#F9FAFB;border-radius:8px;">
+              <span style="font-size:20px;">${emoji}</span>
+              <div><div style="font-weight:600;font-size:13px;">${title}</div><div style="color:#6B7280;font-size:12px;">${desc}</div></div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="background:#EFF6FF;border-radius:10px;padding:16px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
+          <div style="font-size:28px;">⏱️</div>
+          <div>
+            <div style="font-weight:700;color:#1D4ED8;font-size:14px;">Your 14-day free trial is active</div>
+            <div style="color:#3B82F6;font-size:13px;">Trial ends: <strong>${trialEndStr}</strong></div>
+          </div>
+        </div>
+
+        <div style="background:#F0FDF4;border-radius:10px;padding:16px;margin-bottom:24px;">
+          <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#15803D;">🚀 Get started in 3 steps</div>
+          <ol style="margin:0;padding-left:20px;color:#374151;font-size:13px;line-height:2;">
+            <li>Set up your <strong>organization profile</strong> in Settings</li>
+            <li>Add your <strong>first member</strong> in the Members module</li>
+            <li>Create your <strong>first event</strong> in the Events module</li>
+          </ol>
+        </div>
+
+        <div style="text-align:center;margin-bottom:24px;">
+          <a href="https://web3studiotech.github.io/Nexora/" style="display:inline-block;background:#5B4FE8;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:15px;">Go to Your Dashboard →</a>
+        </div>
+
+        <p style="color:#6B7280;font-size:13px;margin:0;">Need help getting started? Reply to this email — we're happy to assist.</p>
+        ${emailFooter()}
+      </div>
+    </div>`;
+
+  return await sendResendEmail({
+    to: ownerEmail,
+    subject: 'Welcome to Nexora — ' + orgName + ' is live! 🎉',
+    html: htmlBody,
+  });
+}
+
+// ---- Receipt Email (fires when marked as paid) ----
+async function sendReceiptEmail({ orgId, orgName, ownerEmail, plan, cycle, amount, invoiceNum, periodEnd, payMethod, payRef }){
+  const planLabel = (plan||'starter').charAt(0).toUpperCase()+(plan||'starter').slice(1);
+  const cycleLabel = cycle === 'yearly' ? 'Yearly' : 'Monthly';
+  const periodEndStr = periodEnd ? new Date(periodEnd).toLocaleDateString('en-MY',{day:'numeric',month:'long',year:'numeric'}) : '—';
+  const today = new Date().toLocaleDateString('en-MY',{day:'numeric',month:'long',year:'numeric'});
+
+  const htmlBody = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+      ${emailHeader('Payment Confirmed')}
+      <div style="padding:32px;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;">
+
+        <div style="text-align:center;margin-bottom:24px;">
+          <div style="width:56px;height:56px;background:#F0FDF4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px;">✅</div>
+          <h2 style="color:#111;margin:0 0 6px;font-size:20px;">Payment Received!</h2>
+          <p style="color:#6B7280;font-size:14px;margin:0;">Thank you, <strong>${escapeHtml(orgName)}</strong>. Your subscription is now active.</p>
+        </div>
+
+        <div style="background:#F9FAFB;border-radius:10px;padding:20px;margin-bottom:24px;">
+          <div style="font-weight:700;font-size:13px;margin-bottom:14px;color:#374151;text-transform:uppercase;letter-spacing:0.5px;">Receipt</div>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr style="border-bottom:1px solid #E5E7EB;">
+              <td style="color:#6B7280;font-size:13px;padding:9px 0;">Invoice Number</td>
+              <td style="font-weight:600;text-align:right;font-family:monospace;">${invoiceNum}</td>
+            </tr>
+            <tr style="border-bottom:1px solid #E5E7EB;">
+              <td style="color:#6B7280;font-size:13px;padding:9px 0;">Date</td>
+              <td style="font-weight:600;text-align:right;">${today}</td>
+            </tr>
+            <tr style="border-bottom:1px solid #E5E7EB;">
+              <td style="color:#6B7280;font-size:13px;padding:9px 0;">Plan</td>
+              <td style="font-weight:600;text-align:right;">${planLabel} (${cycleLabel})</td>
+            </tr>
+            ${payMethod ? `<tr style="border-bottom:1px solid #E5E7EB;"><td style="color:#6B7280;font-size:13px;padding:9px 0;">Payment Method</td><td style="font-weight:600;text-align:right;text-transform:capitalize;">${payMethod.replace('_',' ')}</td></tr>` : ''}
+            ${payRef ? `<tr style="border-bottom:1px solid #E5E7EB;"><td style="color:#6B7280;font-size:13px;padding:9px 0;">Reference</td><td style="font-weight:600;text-align:right;">${escapeHtml(payRef)}</td></tr>` : ''}
+            <tr style="border-bottom:1px solid #E5E7EB;">
+              <td style="color:#6B7280;font-size:13px;padding:9px 0;">Next Due</td>
+              <td style="font-weight:600;text-align:right;">${periodEndStr}</td>
+            </tr>
+            <tr>
+              <td style="font-weight:700;font-size:15px;padding:12px 0 0;">Total Paid</td>
+              <td style="font-weight:700;font-size:20px;color:#5B4FE8;text-align:right;padding-top:12px;">RM ${parseFloat(amount).toFixed(2)}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background:#F0FDF4;border-radius:10px;padding:14px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
+          <div style="font-size:22px;">📅</div>
+          <div style="font-size:13px;color:#15803D;">
+            Your next renewal is on <strong>${periodEndStr}</strong>. 
+            We'll send you a reminder before it's due.
+          </div>
+        </div>
+
+        <div style="text-align:center;margin-bottom:24px;">
+          <a href="https://web3studiotech.github.io/Nexora/" style="display:inline-block;background:#5B4FE8;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:15px;">Go to Your Dashboard →</a>
+        </div>
+
+        <p style="color:#6B7280;font-size:13px;margin:0;">Questions about your invoice? Reply to this email and we'll help you right away.</p>
+        ${emailFooter()}
+      </div>
+    </div>`;
+
+  return await sendResendEmail({
+    to: ownerEmail,
+    subject: 'Payment Confirmed — ' + planLabel + ' Plan · ' + invoiceNum,
+    html: htmlBody,
+  });
+}
+
+// ---- Send Email Reminder via Resend ----
+async function sendEmailReminder(orgId){
+  const org = DB.orgs[orgId];
+  if(!PA_SETTINGS.resendApiKey){
+    toast('Add your Resend API key in Platform Settings first', 'error');
+    return;
+  }
+  const due = org.nextPaymentDue ? new Date(org.nextPaymentDue).toLocaleDateString('en-MY',{day:'numeric',month:'long',year:'numeric'}) : 'soon';
+  const planLabel = (org.plan||'starter').charAt(0).toUpperCase()+(org.plan||'starter').slice(1);
+  const prices = PLAN_PRICES[org.plan||'starter'];
+  const amount = prices ? prices.monthly : 149;
+  const invoiceNum = 'NXR-'+new Date().getFullYear()+'-'+String(Date.now()).slice(-4);
+  const nl = String.fromCharCode(10);
+
+  const htmlBody = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+      <div style="background:#5B4FE8;padding:28px 32px;border-radius:12px 12px 0 0;">
+        <div style="color:#fff;font-size:22px;font-weight:700;">Nexora</div>
+        <div style="color:rgba(255,255,255,0.8);font-size:13px;margin-top:4px;">Association Management Platform</div>
+      </div>
+      <div style="padding:32px;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 12px 12px;">
+        <h2 style="color:#111;margin:0 0 8px;">Subscription Renewal Reminder</h2>
+        <p style="color:#6B7280;margin:0 0 24px;">Hi <strong>${escapeHtml(org.name)}</strong>, your subscription renewal is coming up.</p>
+
+        <div style="background:#F9FAFB;border-radius:10px;padding:20px;margin-bottom:24px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="color:#6B7280;font-size:13px;padding:6px 0;">Invoice</td><td style="font-weight:600;text-align:right;">${invoiceNum}</td></tr>
+            <tr><td style="color:#6B7280;font-size:13px;padding:6px 0;">Plan</td><td style="font-weight:600;text-align:right;text-transform:capitalize;">${planLabel}</td></tr>
+            <tr><td style="color:#6B7280;font-size:13px;padding:6px 0;">Amount</td><td style="font-weight:700;font-size:18px;color:#5B4FE8;text-align:right;">RM ${amount}.00/month</td></tr>
+            <tr><td style="color:#6B7280;font-size:13px;padding:6px 0;">Due Date</td><td style="font-weight:600;color:#DC2626;text-align:right;">${due}</td></tr>
+          </table>
+        </div>
+
+        <div style="background:#EFF6FF;border-radius:10px;padding:20px;margin-bottom:24px;">
+          <div style="font-weight:700;margin-bottom:8px;">Payment Details</div>
+          <div style="font-size:14px;line-height:1.8;">
+            <div>Bank: <strong>${PA_SETTINGS.bankName}</strong></div>
+            <div>Account Name: <strong>${PA_SETTINGS.bankAccount}</strong></div>
+            <div>Account No: <strong>${PA_SETTINGS.bankNumber}</strong></div>
+            <div style="margin-top:8px;color:#6B7280;font-size:12px;">Reference: Please use your organization name as payment reference</div>
+          </div>
+        </div>
+
+        <p style="color:#6B7280;font-size:13px;">After payment, please send your receipt to <a href="mailto:${PA_SETTINGS.senderEmail}">${PA_SETTINGS.senderEmail}</a> and we will activate your subscription within 1 business day.</p>
+        <p style="color:#9CA3AF;font-size:12px;margin-top:32px;border-top:1px solid #E5E7EB;padding-top:16px;">© ${new Date().getFullYear()} Nexora by Matrix Infinity Technology Multimedia. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method:'POST',
+      headers:{ 'Authorization':'Bearer '+PA_SETTINGS.resendApiKey, 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        from: PA_SETTINGS.senderName+' <'+PA_SETTINGS.senderEmail+'>',
+        to: [org.ownerEmail || org.email || ''],
+        subject: 'Subscription Renewal Reminder — '+planLabel+' Plan due '+due,
+        html: htmlBody,
+      })
+    });
+    const data = await res.json();
+    if(res.ok){
+      toast('Email reminder sent to '+org.name+' ✓', 'success');
+      // Log in billing history
+      if(SESSION && SESSION.mode === 'supabase'){
+        await sb.from('billing_history').insert({
+          org_id: orgId, amount, currency:'MYR', plan: org.plan,
+          billing_cycle:'monthly', status:'pending',
+          due_date: org.nextPaymentDue, invoice_number: invoiceNum,
+          notes:'Reminder email sent'
+        });
+      }
+    } else {
+      toast('Email failed: '+(data.message||'Check API key'), 'error');
+    }
+  } catch(err){
+    toast('Email error: '+err.message, 'error');
+  }
+}
+
+// ---- Invoice Modal ----
+function openInvoiceModal(orgId){
+  const org = DB.orgs[orgId];
+  const planLabel = (org.plan||'starter').charAt(0).toUpperCase()+(org.plan||'starter').slice(1);
+  const prices = PLAN_PRICES[org.plan||'starter'];
+  const amount = prices ? prices.monthly : 149;
+  const due = org.nextPaymentDue ? new Date(org.nextPaymentDue).toLocaleDateString('en-MY',{day:'numeric',month:'long',year:'numeric'}) : '—';
+  const today = new Date().toLocaleDateString('en-MY',{day:'numeric',month:'long',year:'numeric'});
+  const invoiceNum = 'NXR-'+new Date().getFullYear()+'-'+String(Date.now()).slice(-4);
+
+  const b = document.createElement('div');
+  b.className = 'modal-backdrop'; b.id = 'invoiceModal';
+  b.innerHTML = `
+    <div class="modal" style="max-width:620px;">
+      <div class="modal-header">
+        <h3>Invoice Preview</h3>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="printInvoice()">Print / Save PDF</button>
+          <button class="btn btn-secondary btn-sm" onclick="sendEmailReminder('${orgId}')">${icon('mail')} Email</button>
+          <button class="btn-icon btn-ghost" onclick="closeModal('invoiceModal')">${icon('close')}</button>
+        </div>
+      </div>
+      <div class="modal-body" style="padding:0;">
+        <div id="invoicePrintArea" style="padding:40px;font-family:Arial,sans-serif;background:#fff;">
+
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;">
+            <div>
+              <div style="font-size:22px;font-weight:700;color:#5B4FE8;">NEXORA</div>
+              <div style="font-size:11px;color:#6B7280;margin-top:2px;">Association Management Platform</div>
+              <div style="margin-top:12px;font-size:13px;color:#374151;line-height:1.6;">
+                Matrix Infinity Technology Multimedia<br>
+                ${PA_SETTINGS.bankName} · ${PA_SETTINGS.bankNumber}<br>
+                ${PA_SETTINGS.senderEmail}
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:28px;font-weight:700;color:#111;">INVOICE</div>
+              <div style="font-size:13px;color:#6B7280;margin-top:4px;">${invoiceNum}</div>
+              <div style="font-size:13px;color:#6B7280;">Date: ${today}</div>
+              <div style="font-size:13px;color:#DC2626;font-weight:600;">Due: ${due}</div>
+            </div>
+          </div>
+
+          <div style="background:#F9FAFB;border-radius:8px;padding:16px;margin-bottom:24px;">
+            <div style="font-size:11px;color:#6B7280;text-transform:uppercase;font-weight:600;margin-bottom:6px;">Bill To</div>
+            <div style="font-weight:700;font-size:15px;">${escapeHtml(org.name)}</div>
+            <div style="font-size:13px;color:#6B7280;">${escapeHtml(org.type||'')}</div>
+          </div>
+
+          <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+            <thead>
+              <tr style="border-bottom:2px solid #E5E7EB;">
+                <th style="text-align:left;padding:10px 8px;font-size:12px;color:#6B7280;text-transform:uppercase;">Description</th>
+                <th style="text-align:center;padding:10px 8px;font-size:12px;color:#6B7280;text-transform:uppercase;">Period</th>
+                <th style="text-align:right;padding:10px 8px;font-size:12px;color:#6B7280;text-transform:uppercase;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid #F3F4F6;">
+                <td style="padding:14px 8px;">
+                  <div style="font-weight:600;">Nexora ${planLabel} Plan</div>
+                  <div style="font-size:12px;color:#6B7280;">Monthly subscription — association management platform</div>
+                </td>
+                <td style="padding:14px 8px;text-align:center;font-size:13px;color:#6B7280;">Monthly</td>
+                <td style="padding:14px 8px;text-align:right;font-weight:700;font-size:16px;">RM ${amount}.00</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2" style="padding:14px 8px;text-align:right;font-weight:600;">Total</td>
+                <td style="padding:14px 8px;text-align:right;font-size:20px;font-weight:700;color:#5B4FE8;">RM ${amount}.00</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div style="background:#EFF6FF;border-radius:8px;padding:16px;margin-bottom:24px;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Payment Instructions</div>
+            <div style="font-size:13px;line-height:1.8;color:#374151;">
+              Bank: <strong>${PA_SETTINGS.bankName}</strong><br>
+              Account Name: <strong>${PA_SETTINGS.bankAccount}</strong><br>
+              Account No: <strong>${PA_SETTINGS.bankNumber}</strong><br>
+              Reference: <strong>${escapeHtml(org.name)}</strong>
+            </div>
+          </div>
+
+          <div style="font-size:11px;color:#9CA3AF;text-align:center;border-top:1px solid #E5E7EB;padding-top:16px;">
+            Thank you for your continued subscription to Nexora. For queries contact ${PA_SETTINGS.senderEmail}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(b);
+}
+
+function printInvoice(){
+  const content = document.getElementById('invoicePrintArea').innerHTML;
+  const w = window.open('','_blank');
+  w.document.write('<html><head><title>Invoice</title><style>body{margin:0;font-family:Arial,sans-serif;}@media print{body{margin:0;}}</style></head><body>'+content+'</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(()=>{ w.print(); }, 500);
+}
 
 // ---- Open full subscription modal ----
 function openSubscriptionModal(orgId){
@@ -12723,9 +13232,11 @@ function openSubscriptionModal(orgId){
 
       </div>
       <div class="modal-footer" style="justify-content:space-between;">
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-secondary" onclick="sendWhatsAppReminder('${orgId}')" title="Send WhatsApp reminder">${icon('whatsapp')} WhatsApp</button>
-          <button class="btn btn-danger" onclick="confirmSuspend('${orgId}')" style="background:#FEF2F2;color:#DC2626;border-color:#FECACA;">Suspend</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="sendEmailReminder('${orgId}')" style="background:#5B4FE8;">${icon('mail')} Email</button>
+          <button class="btn btn-secondary btn-sm" onclick="sendWhatsAppReminder('${orgId}')">${icon('whatsapp')} WhatsApp</button>
+          <button class="btn btn-secondary btn-sm" onclick="closeModal('subModal');openInvoiceModal('${orgId}');">${icon('document')} Invoice</button>
+          <button class="btn btn-sm" onclick="confirmSuspend('${orgId}')" style="background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;">Suspend</button>
         </div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-secondary" onclick="closeModal('subModal')">Cancel</button>
@@ -12808,6 +13319,16 @@ async function saveSubscription(orgId){
         payment_ref: payRef || null,
         invoice_number: invoiceNum,
       });
+      // Send receipt email (non-blocking)
+      const orgData = DB.orgs[orgId];
+      if(orgData && orgData.ownerEmail){
+        sendReceiptEmail({
+          orgId, orgName: orgData.name,
+          ownerEmail: orgData.ownerEmail,
+          plan, cycle, amount, invoiceNum,
+          periodEnd, payMethod, payRef,
+        }).catch(()=>{});
+      }
     }
   }
 
@@ -12843,9 +13364,9 @@ function sendWhatsAppReminder(orgId){
     'This is a reminder that your Nexora subscription (' + planLabel + ' Plan) is due on ' + due + '.' + nl + nl +
     'Amount: RM ' + amount + '/month' + nl +
     'Bank Transfer:' + nl +
-    'Bank: Maybank' + nl +
-    'Account Name: [Your Company Name]' + nl +
-    'Account No: [Your Account No]' + nl + nl +
+    'Bank: Hong Leong Bank' + nl +
+    'Account Name: Matrix Infinity Technology Multimedia' + nl +
+    'Account No: 03000064995' + nl + nl +
     'Please use your organization name as the payment reference.' + nl + nl +
     'Thank you!' + nl + 'Nexora Team'
   );
@@ -12915,6 +13436,7 @@ const NAV_ITEMS = [
   { id:'committees', label:()=>tr('mod_committees'), icon:'committee' },
   { id:'divisions', label:()=>tr('mod_divisions'), icon:'building' },
   { id:'settings', label:()=>tr('mod_settings'), icon:'settings' },
+  { id:'reports', label:()=>tr('mod_reports'), icon:'chart' },
 ];
 let currentPage = 'overview';
 
@@ -13057,6 +13579,41 @@ function renderSubscriptionBanner(){
   if(!banner || !org) return;
   const status = org.subscriptionStatus || 'active';
   const dueStr = org.nextPaymentDue ? fmtDate(org.nextPaymentDue) : '—';
+  const contactEmail = 'web3studiotech@gmail.com';
+
+  // Trial countdown banner
+  if(status === 'trial' || status === 'active' && org.plan === 'trial'){
+    const trialEnd = org.nextPaymentDue ? new Date(org.nextPaymentDue) : null;
+    const daysLeft = trialEnd ? Math.ceil((trialEnd - new Date()) / 86400000) : null;
+    if(daysLeft !== null && daysLeft <= 7 && daysLeft >= 0){
+      const urgent = daysLeft <= 3;
+      banner.innerHTML = `
+        <div style="background:${urgent?'#FFF7ED':'#EFF6FF'};color:${urgent?'#C2410C':'#1D4ED8'};padding:11px 28px;font-size:13px;display:flex;align-items:center;gap:10px;border-bottom:1px solid ${urgent?'#FDBA74':'#BFDBFE'};">
+          ${icon('bell')}
+          <span style="flex:1;">
+            ${urgent?'<b>Urgent:</b> ':''}Your free trial ends in <b>${daysLeft} day${daysLeft===1?'':'s'}</b>.
+            Choose a plan to keep access to all your data.
+          </span>
+          <a href="mailto:${contactEmail}?subject=Nexora Subscription - ${encodeURIComponent(org.name)}" style="font-weight:700;text-decoration:underline;color:inherit;white-space:nowrap;">Upgrade Now →</a>
+        </div>`;
+      return;
+    } else if(daysLeft !== null && daysLeft > 7){
+      banner.innerHTML = `
+        <div style="background:#F0FDF4;color:#15803D;padding:9px 28px;font-size:13px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #BBF7D0;">
+          ${icon('star')} <span style="flex:1;">You are on a <b>14-day free trial</b>. ${daysLeft} days remaining. <a href="mailto:${contactEmail}?subject=Nexora Subscription - ${encodeURIComponent(org.name)}" style="color:inherit;font-weight:600;text-decoration:underline;">Upgrade anytime →</a></span>
+        </div>`;
+      return;
+    }
+    if(daysLeft !== null && daysLeft < 0){
+      banner.innerHTML = `
+        <div style="background:#FEF2F2;color:#DC2626;padding:11px 28px;font-size:13px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #FECACA;">
+          ${icon('bell')} <span style="flex:1;"><b>Your trial has ended.</b> Please select a plan to continue using Nexora.</span>
+          <a href="mailto:${contactEmail}?subject=Nexora Subscription - ${encodeURIComponent(org.name)}" style="font-weight:700;text-decoration:underline;color:inherit;white-space:nowrap;">Choose a Plan →</a>
+        </div>`;
+      return;
+    }
+    banner.innerHTML = ''; return;
+  }
 
   const styles = {
     reminder: { bg:'var(--brand-light)', fg:'var(--brand-dark)', icon:'bell',
@@ -13065,6 +13622,8 @@ function renderSubscriptionBanner(){
       text:`<b>Action needed:</b> payment was due on <b>${dueStr}</b>. Your account will be suspended if payment isn't received soon — please contact us to renew.` },
     suspended: { bg:'var(--danger-light)', fg:'var(--danger)', icon:'bell',
       text:`<b>Your account is suspended</b> due to non-payment. Contact us to reactivate — your data is safe and untouched.` },
+    past_due: { bg:'var(--warn-light)', fg:'#7A5A0E', icon:'bell',
+      text:`<b>Payment overdue:</b> your subscription payment was due on <b>${dueStr}</b>. Please settle to avoid suspension.` },
   };
 
   if(status === 'active' || !styles[status]){ banner.innerHTML=''; return; }
@@ -13106,6 +13665,263 @@ function navigateTo(page){
   else if(page==='committees') renderCommittees(content);
   else if(page==='divisions') renderDivisions(content);
   else if(page==='settings') renderSettings(content);
+  else if(page==='reports') renderReports(content);
+}
+
+function renderReports(el){
+  const org = currentOrg();
+  const members = Object.values(org.members||{});
+  const events = Object.values(org.events||{});
+  const txns = Object.values(org.transactions||{});
+
+  // ---- Compute KPIs ----
+  const totalMembers = members.length;
+  const activeMembers = members.filter(m=>m.status==='active').length;
+  const newThisMonth = members.filter(m=>{
+    if(!m.joinDate) return false;
+    const d = new Date(m.joinDate);
+    const now = new Date();
+    return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  }).length;
+  const expiringSoon = members.filter(m=>m.status==='active' && daysUntil(m.expiryDate)>=0 && daysUntil(m.expiryDate)<=30).length;
+
+  const income = txns.filter(t=>t.type!=='expense').reduce((s,t)=>s+t.amount,0);
+  const expenses = txns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const net = income - expenses;
+
+  const totalEvents = events.length;
+  const upcomingEvents = events.filter(e=>new Date(e.date)>=new Date()).length;
+  const totalAttendees = events.reduce((s,e)=>s+(e.attendees||[]).length,0);
+
+  // ---- Member growth (last 6 months) ----
+  const growthData = [];
+  for(let i=5;i>=0;i--){
+    const d = new Date();
+    d.setMonth(d.getMonth()-i);
+    const mo = d.getMonth(); const yr = d.getFullYear();
+    const count = members.filter(m=>{
+      if(!m.joinDate) return false;
+      const jd = new Date(m.joinDate);
+      return jd.getMonth()===mo && jd.getFullYear()===yr;
+    }).length;
+    growthData.push({ label: d.toLocaleDateString('en-MY',{month:'short',year:'2-digit'}), value: count });
+  }
+  const maxGrowth = Math.max(...growthData.map(d=>d.value),1);
+
+  // ---- Revenue by month (last 6 months) ----
+  const revenueData = [];
+  for(let i=5;i>=0;i--){
+    const d = new Date();
+    d.setMonth(d.getMonth()-i);
+    const mo = d.getMonth(); const yr = d.getFullYear();
+    const rev = txns.filter(t=>t.type!=='expense' && t.date && new Date(t.date).getMonth()===mo && new Date(t.date).getFullYear()===yr).reduce((s,t)=>s+t.amount,0);
+    const exp = txns.filter(t=>t.type==='expense' && t.date && new Date(t.date).getMonth()===mo && new Date(t.date).getFullYear()===yr).reduce((s,t)=>s+t.amount,0);
+    revenueData.push({ label: d.toLocaleDateString('en-MY',{month:'short',year:'2-digit'}), rev, exp });
+  }
+  const maxRev = Math.max(...revenueData.map(d=>Math.max(d.rev,d.exp)),1);
+
+  // ---- Tier breakdown ----
+  const tierMap = {};
+  members.forEach(m=>{
+    const t = m.tier||'Unknown';
+    tierMap[t] = (tierMap[t]||0)+1;
+  });
+  const tierColors = ['#5B4FE8','#7C3AED','#10B981','#F59E0B','#EF4444','#06B6D4','#EC4899'];
+  const tierEntries = Object.entries(tierMap).sort((a,b)=>b[1]-a[1]);
+
+  // ---- Status breakdown ----
+  const statusMap = { active:0, pending:0, expired:0 };
+  members.forEach(m=>{ statusMap[m.status||'pending']=(statusMap[m.status||'pending']||0)+1; });
+
+  // ---- Expiring members list ----
+  const expiring = members.filter(m=>m.status==='active' && daysUntil(m.expiryDate)>=0 && daysUntil(m.expiryDate)<=60)
+    .sort((a,b)=>new Date(a.expiryDate)-new Date(b.expiryDate)).slice(0,8);
+
+  // ---- Top income categories ----
+  const incomeMap = {};
+  txns.filter(t=>t.type!=='expense').forEach(t=>{ incomeMap[t.category||'Other']=(incomeMap[t.category||'Other']||0)+t.amount; });
+  const topIncome = Object.entries(incomeMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxInc = Math.max(...topIncome.map(e=>e[1]),1);
+
+  // ---- SVG bar chart builder ----
+  function barChart(data, maxVal, colorFn, valuePrefix){
+    const W=400, H=140, barW=Math.floor((W-40)/data.length)-6, pad=20;
+    let bars='', labels='', vals='';
+    data.forEach((d,i)=>{
+      const h = Math.max(4, Math.round((d.value/maxVal)*(H-30)));
+      const x = pad + i*(barW+6);
+      const y = H-20-h;
+      bars += '<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+h+'" rx="4" fill="'+(colorFn?colorFn(i,d):'#5B4FE8')+'"/>';
+      labels += '<text x="'+(x+barW/2)+'" y="'+(H-4)+'" text-anchor="middle" font-size="9" fill="#9CA3AF">'+d.label+'</text>';
+      vals += '<text x="'+(x+barW/2)+'" y="'+(y-4)+'" text-anchor="middle" font-size="9" fill="#6B7280">'+(d.value>0?(valuePrefix||'')+d.value:'')+'</text>';
+    });
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;">'+bars+labels+vals+'</svg>';
+  }
+
+  function dualBarChart(data, maxVal){
+    const W=400, H=150, bW=Math.floor((W-40)/data.length/2)-3, pad=20;
+    let bars='', labels='';
+    data.forEach((d,i)=>{
+      const x = pad + i*((bW*2)+10);
+      const hR = Math.max(2,Math.round((d.rev/maxVal)*(H-30)));
+      const hE = Math.max(2,Math.round((d.exp/maxVal)*(H-30)));
+      bars += '<rect x="'+x+'" y="'+(H-20-hR)+'" width="'+bW+'" height="'+hR+'" rx="3" fill="#10B981"/>';
+      bars += '<rect x="'+(x+bW+2)+'" y="'+(H-20-hE)+'" width="'+bW+'" height="'+hE+'" rx="3" fill="#EF4444"/>';
+      labels += '<text x="'+(x+bW)+'" y="'+(H-4)+'" text-anchor="middle" font-size="9" fill="#9CA3AF">'+d.label+'</text>';
+    });
+    const legend = '<text x="20" y="12" font-size="9" fill="#10B981">■ Income</text><text x="80" y="12" font-size="9" fill="#EF4444">■ Expense</text>';
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;">'+legend+bars+labels+'</svg>';
+  }
+
+  // ---- Export CSV ----
+  function exportMembersCSV(){
+    const headers = ['Name','Email','Phone','Tier','Status','Join Date','Expiry Date'];
+    const rows = members.map(m=>[m.name,m.email,m.phone,m.tier,m.status,m.joinDate,m.expiryDate].map(v=>(v||'').replace(/,/g,';')));
+    const csv = [headers,...rows].map(r=>r.join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+    a.download = org.name.replace(/\s/g,'_')+'_members_'+new Date().toISOString().slice(0,10)+'.csv';
+    a.click();
+  }
+  window.exportMembersCSV = exportMembersCSV;
+
+  function exportTransactionsCSV(){
+    const headers = ['Date','Description','Category','Type','Amount'];
+    const rows = txns.map(t=>[t.date,t.description,t.category,t.type,t.amount].map(v=>(v||'').toString().replace(/,/g,';')));
+    const csv = [headers,...rows].map(r=>r.join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+    a.download = org.name.replace(/\s/g,'_')+'_transactions_'+new Date().toISOString().slice(0,10)+'.csv';
+    a.click();
+  }
+  window.exportTransactionsCSV = exportTransactionsCSV;
+
+  // ---- Render ----
+  const kpiCard = (label,value,sub,color)=>
+    '<div class="card kpi-card" style="border-top:3px solid '+(color||'var(--brand)')+';">'
+    +'<div class="kpi-label">'+label+'</div>'
+    +'<div class="kpi-value">'+value+'</div>'
+    +(sub?'<div class="kpi-sub" style="font-size:11px;color:var(--ink-faint);margin-top:4px;">'+sub+'</div>':'')
+    +'</div>';
+
+  el.innerHTML = '<div class="page-head"><div><h1>Reports</h1>'
+    +'<div class="sub">Membership, financial and event analytics for '+escapeHtml(org.name)+'</div></div>'
+    +'<div class="page-actions">'
+    +'<button class="btn btn-secondary btn-sm" onclick="exportMembersCSV()">${icon("download")} Members CSV</button>'
+    +'<button class="btn btn-secondary btn-sm" onclick="exportTransactionsCSV()">${icon("download")} Transactions CSV</button>'
+    +'</div></div>'
+
+    // KPI row
+    +'<div class="pa-stats" style="margin-bottom:20px;">'
+    +kpiCard('Total Members',totalMembers,newThisMonth+' joined this month','#5B4FE8')
+    +kpiCard('Active Members',activeMembers,Math.round(activeMembers/Math.max(totalMembers,1)*100)+'% of total','#10B981')
+    +kpiCard('Expiring (30 days)',expiringSoon,'Needs renewal action','#F59E0B')
+    +kpiCard('Net Revenue','RM '+net.toLocaleString(),'Income: RM '+income.toLocaleString(),'#06B6D4')
+    +'</div>'
+
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">'
+
+    // Member Growth chart
+    +'<div class="card" style="padding:20px;">'
+    +'<div style="font-weight:700;font-size:14px;margin-bottom:4px;">Member Growth</div>'
+    +'<div style="font-size:12px;color:var(--ink-faint);margin-bottom:12px;">New members per month (last 6 months)</div>'
+    +barChart(growthData, maxGrowth, ()=>'#5B4FE8', '')
+    +'</div>'
+
+    // Revenue vs Expenses chart
+    +'<div class="card" style="padding:20px;">'
+    +'<div style="font-weight:700;font-size:14px;margin-bottom:4px;">Revenue vs Expenses</div>'
+    +'<div style="font-size:12px;color:var(--ink-faint);margin-bottom:12px;">Last 6 months</div>'
+    +dualBarChart(revenueData, maxRev)
+    +'</div>'
+    +'</div>'
+
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">'
+
+    // Membership tier breakdown
+    +'<div class="card" style="padding:20px;">'
+    +'<div style="font-weight:700;font-size:14px;margin-bottom:16px;">Members by Tier</div>'
+    +(tierEntries.length===0
+      ? '<p style="color:var(--ink-faint);font-size:13px;">No tier data yet.</p>'
+      : tierEntries.map((e,i)=>{
+          const pct = Math.round(e[1]/totalMembers*100);
+          return '<div style="margin-bottom:12px;">'
+            +'<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">'
+            +'<span style="font-weight:500;">'+escapeHtml(e[0])+'</span>'
+            +'<span style="color:var(--ink-soft);">'+e[1]+' ('+pct+'%)</span></div>'
+            +'<div style="height:8px;background:var(--line-soft);border-radius:4px;">'
+            +'<div style="height:8px;width:'+pct+'%;background:'+(tierColors[i%tierColors.length])+';border-radius:4px;"></div></div></div>';
+        }).join('')
+    )+'</div>'
+
+    // Status breakdown
+    +'<div class="card" style="padding:20px;">'
+    +'<div style="font-weight:700;font-size:14px;margin-bottom:16px;">Membership Status</div>'
+    +[['Active',statusMap.active,'#10B981'],['Pending',statusMap.pending,'#F59E0B'],['Expired',statusMap.expired,'#EF4444']]
+      .map(([label,count,color])=>{
+        const pct = totalMembers>0 ? Math.round(count/totalMembers*100) : 0;
+        return '<div style="margin-bottom:14px;">'
+          +'<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">'
+          +'<span style="font-weight:500;color:'+color+';">'+label+'</span>'
+          +'<span style="color:var(--ink-soft);">'+count+' members ('+pct+'%)</span></div>'
+          +'<div style="height:8px;background:var(--line-soft);border-radius:4px;">'
+          +'<div style="height:8px;width:'+pct+'%;background:'+color+';border-radius:4px;"></div></div></div>';
+      }).join('')
+    +'</div>'
+    +'</div>'
+
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">'
+
+    // Top income sources
+    +'<div class="card" style="padding:20px;">'
+    +'<div style="font-weight:700;font-size:14px;margin-bottom:16px;">Top Income Sources</div>'
+    +(topIncome.length===0
+      ? '<p style="color:var(--ink-faint);font-size:13px;">No transactions yet.</p>'
+      : topIncome.map(([cat,amt],i)=>{
+          const pct = Math.round(amt/income*100)||0;
+          return '<div style="margin-bottom:12px;">'
+            +'<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">'
+            +'<span style="font-weight:500;">'+escapeHtml(cat)+'</span>'
+            +'<span style="color:var(--ink-soft);">RM '+amt.toLocaleString()+' ('+pct+'%)</span></div>'
+            +'<div style="height:7px;background:var(--line-soft);border-radius:4px;">'
+            +'<div style="height:7px;width:'+pct+'%;background:'+(tierColors[i%tierColors.length])+';border-radius:4px;"></div></div></div>';
+        }).join('')
+    )+'</div>'
+
+    // Expiring members
+    +'<div class="card" style="padding:20px;">'
+    +'<div style="font-weight:700;font-size:14px;margin-bottom:16px;">Expiring Memberships (60 days)</div>'
+    +(expiring.length===0
+      ? '<p style="color:var(--ink-faint);font-size:13px;">No memberships expiring in 60 days. 🎉</p>'
+      : '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+        +'<thead><tr style="border-bottom:1px solid var(--line);">'
+        +'<th style="text-align:left;padding:6px 4px;color:var(--ink-soft);">Member</th>'
+        +'<th style="text-align:left;padding:6px 4px;color:var(--ink-soft);">Tier</th>'
+        +'<th style="text-align:right;padding:6px 4px;color:var(--ink-soft);">Days Left</th>'
+        +'</tr></thead><tbody>'
+        +expiring.map(m=>{
+          const days = daysUntil(m.expiryDate);
+          const col = days<=14?'#EF4444':days<=30?'#F59E0B':'#6B7280';
+          return '<tr style="border-bottom:1px solid var(--line-soft);">'
+            +'<td style="padding:8px 4px;font-weight:500;">'+escapeHtml(m.name)+'</td>'
+            +'<td style="padding:8px 4px;color:var(--ink-soft);">'+escapeHtml(m.tier||'—')+'</td>'
+            +'<td style="padding:8px 4px;text-align:right;font-weight:600;color:'+col+';">'+days+'d</td>'
+            +'</tr>';
+        }).join('')
+        +'</tbody></table>'
+    )+'</div>'
+    +'</div>'
+
+    // Events summary
+    +'<div class="card" style="padding:20px;margin-bottom:16px;">'
+    +'<div style="font-weight:700;font-size:14px;margin-bottom:16px;">Events Summary</div>'
+    +'<div class="pa-stats">'
+    +kpiCard('Total Events',totalEvents,'All time','#5B4FE8')
+    +kpiCard('Upcoming',upcomingEvents,'Scheduled ahead','#10B981')
+    +kpiCard('Total Attendees',totalAttendees,'Across all events','#F59E0B')
+    +kpiCard('Avg Attendance',totalEvents>0?Math.round(totalAttendees/totalEvents):0,'Per event','#06B6D4')
+    +'</div>'
+    +'</div>';
 }
 
 function renderSuspendedScreen(el){
@@ -13137,7 +13953,47 @@ function renderOverview(el){
   const expiringMembers = members.filter(m=>m.status==='active' && daysUntil(m.expiryDate)<=45).sort((a,b)=>daysUntil(a.expiryDate)-daysUntil(b.expiryDate)).slice(0,6);
   const tierMap = {}; org.settings.tiers.forEach(t=>tierMap[t.id]=t);
 
+  // Onboarding checklist logic
+  const obKey = 'nexora_ob_' + org.id;
+  const ob = JSON.parse(localStorage.getItem(obKey) || '{}');
+  const obSteps = [
+    { id:'profile', label:'Set up organization profile', done: !!(org.settings && org.settings.logoUrl || org.type), nav:'settings' },
+    { id:'member', label:'Add your first member', done: members.length > 0, nav:'members' },
+    { id:'tier', label:'Configure membership tiers', done: !!(org.settings && org.settings.tiers && org.settings.tiers.length > 0), nav:'settings' },
+    { id:'event', label:'Create your first event', done: events.length > 0, nav:'events' },
+    { id:'accounting', label:'Record a transaction', done: txns.length > 0, nav:'accounting' },
+  ];
+  const allDone = obSteps.every(s => s.done);
+  const dismissed = ob.dismissed;
+  // Build onboarding HTML with string concatenation (no nested template literals)
+  let obHTML = '';
+  if(!allDone && !dismissed){
+    const doneCount = obSteps.filter(s=>s.done).length;
+    let stepsHTML = '';
+    obSteps.forEach(function(s){
+      const bg = s.done ? '#F0FDF4' : '#fff';
+      const border = s.done ? '#BBF7D0' : 'var(--line)';
+      const dotBg = s.done ? '#22C55E' : 'var(--line)';
+      const txtDecor = s.done ? 'text-decoration:line-through;' : '';
+      const fw = s.done ? '400' : '500';
+      const col = s.done ? 'var(--ink-soft)' : 'var(--ink)';
+      const btn = !s.done ? '<button onclick="navigateTo(\'' + s.nav + '\')" style="border:none;background:var(--brand);color:#fff;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;">Start &#8594;</button>' : '';
+      stepsHTML += '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:' + bg + ';border-radius:9px;border:1px solid ' + border + ';margin-bottom:8px;">'
+        + '<div style="width:22px;height:22px;border-radius:50%;background:' + dotBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+        + '<span style="color:#fff;font-size:12px;">' + (s.done ? '&#10003;' : '') + '</span></div>'
+        + '<span style="flex:1;font-size:13.5px;font-weight:' + fw + ';color:' + col + ';' + txtDecor + '">' + s.label + '</span>'
+        + btn + '</div>';
+    });
+    obHTML = '<div style="background:linear-gradient(135deg,#EFF6FF,#F5F3FF);border:1.5px solid #C7D2FE;border-radius:14px;padding:20px 24px;margin-bottom:24px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">'
+      + '<div><div style="font-weight:700;font-size:15px;color:#1E1B4B;">&#128640; Getting Started</div>'
+      + '<div style="font-size:12px;color:#6B7280;margin-top:2px;">' + doneCount + ' of ' + obSteps.length + ' steps completed</div></div>'
+      + '<button onclick="dismissOnboarding(\'' + org.id + '\')" style="border:none;background:none;cursor:pointer;color:#9CA3AF;font-size:18px;">&#10005;</button>'
+      + '</div><div>' + stepsHTML + '</div></div>';
+  }
+
   el.innerHTML = `
+    \${obHTML}
     <div class="page-head">
       <div>
         <h1>${tr('dash_welcome')}, ${escapeHtml(SESSION.name.split(' ')[0])}</h1>
@@ -16101,13 +16957,72 @@ function renderSettingsContent(){
           </div>
         </div>
         <div style="border-top:1px solid var(--line-soft);padding-top:18px;margin-top:18px;">
-          <p style="font-size:13px;color:var(--ink-faint);">Questions about billing? <a href="mailto:web3studiotech@gmail.com?subject=Nexora Billing - ${encodeURIComponent(org.name)}" style="color:var(--brand);font-weight:600;">Contact us</a></p>
-          <div style="margin-top:12px;padding:14px;background:var(--brand-light);border-radius:10px;font-size:13px;color:var(--brand-dark);">
-            <b>🔐 Firebase Backend:</b> Contact Web3 Studio Tech to activate cloud sync. This enables real-time multi-device access and permanent data backup for your organization.
+          <p style="font-size:13px;color:var(--ink-faint);">Questions about billing? <a href="mailto:web3studiotech@gmail.com?subject=Nexora Billing - ${encodeURIComponent(org.name)}" style="color:var(--brand);font-weight:600;">Contact us →</a></p>
+        </div>
+
+        <!-- Invoice History -->
+        <div style="border-top:1px solid var(--line-soft);padding-top:20px;margin-top:4px;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:14px;">Invoice History</div>
+          <div id="clientBillingHistory">
+            <div style="text-align:center;padding:24px;color:var(--ink-faint);font-size:13px;">Loading...</div>
           </div>
         </div>
       </div>
     `;
+    loadClientBillingHistory(org.id);
+  }
+}
+
+
+function dismissOnboarding(orgId){
+  const obKey = 'nexora_ob_' + orgId;
+  const ob = JSON.parse(localStorage.getItem(obKey) || '{}');
+  ob.dismissed = true;
+  localStorage.setItem(obKey, JSON.stringify(ob));
+  navigateTo('overview');
+}
+
+async function loadClientBillingHistory(orgId){
+  const el = document.getElementById('clientBillingHistory');
+  if(!el) return;
+  if(!SESSION || SESSION.mode !== 'supabase'){
+    el.innerHTML = '<p style="font-size:13px;color:var(--ink-faint);padding:8px 0;">Connect to Supabase to view billing history.</p>';
+    return;
+  }
+  try {
+    const { data } = await sb.from('billing_history')
+      .select('*').eq('org_id', orgId)
+      .order('created_at', { ascending: false }).limit(12);
+    if(!data || data.length === 0){
+      el.innerHTML = '<p style="font-size:13px;color:var(--ink-faint);padding:8px 0;">No billing records yet. Your first invoice will appear here after your first payment.</p>';
+      return;
+    }
+    const rows = data.map(b => {
+      const statusPill = b.status==='paid'?'pill-success':b.status==='pending'?'pill-warn':'pill-danger';
+      const paidDate = b.paid_at ? new Date(b.paid_at).toLocaleDateString('en-MY') : '—';
+      const dueDate = b.due_date ? new Date(b.due_date).toLocaleDateString('en-MY') : '—';
+      return '<tr style="border-bottom:1px solid var(--line-soft);">'
+        + '<td style="padding:10px 6px;font-family:monospace;font-size:12px;color:var(--brand);">' + (b.invoice_number||'—') + '</td>'
+        + '<td style="padding:10px 6px;text-transform:capitalize;">' + (b.plan||'—') + ' / ' + (b.billing_cycle||'—') + '</td>'
+        + '<td style="padding:10px 6px;font-weight:600;">RM ' + parseFloat(b.amount).toFixed(2) + '</td>'
+        + '<td style="padding:10px 6px;"><span class="pill ' + statusPill + '">' + b.status + '</span></td>'
+        + '<td style="padding:10px 6px;color:var(--ink-soft);">' + paidDate + '</td>'
+        + '<td style="padding:10px 6px;color:var(--ink-soft);">' + dueDate + '</td>'
+        + '</tr>';
+    }).join('');
+    el.innerHTML = '<div style="overflow-x:auto;">'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+      + '<thead><tr style="border-bottom:2px solid var(--line);">'
+      + '<th style="text-align:left;padding:8px 6px;color:var(--ink-soft);">Invoice</th>'
+      + '<th style="text-align:left;padding:8px 6px;color:var(--ink-soft);">Plan</th>'
+      + '<th style="text-align:left;padding:8px 6px;color:var(--ink-soft);">Amount</th>'
+      + '<th style="text-align:left;padding:8px 6px;color:var(--ink-soft);">Status</th>'
+      + '<th style="text-align:left;padding:8px 6px;color:var(--ink-soft);">Paid</th>'
+      + '<th style="text-align:left;padding:8px 6px;color:var(--ink-soft);">Next Due</th>'
+      + '</tr></thead>'
+      + '<tbody>' + rows + '</tbody></table></div>';
+  } catch(e) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--ink-faint);">Unable to load billing history.</p>';
   }
 }
 
