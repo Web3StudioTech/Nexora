@@ -12413,7 +12413,19 @@ async function handleSignup(e){
     // 4. Link user as owner
     await sb.from('org_users').insert({ user_id: authData.user.id, org_id: org.id, role: 'owner' });
 
-    // 5. Load and enter dashboard
+    // 5. Create trial subscription
+    await sb.from('subscriptions').insert({
+      org_id: org.id,
+      plan: 'trial',
+      billing_cycle: 'monthly',
+      status: 'trial',
+      amount: 0,
+      trial_start: new Date().toISOString(),
+      trial_end: new Date(Date.now()+14*86400000).toISOString(),
+      auto_mode: false
+    });
+
+    // 6. Load and enter dashboard
     await loadOrgFromSupabase(org.id);
     SESSION = { email, name, role:'owner', orgId: org.id, mode:'supabase', supabaseUserId: authData.user.id };
     setSession(SESSION);
@@ -12520,7 +12532,7 @@ function renderPlatformAdminTable(){
   }
 
   table.innerHTML = `
-    <thead><tr><th>Organization</th><th>Plan</th><th>Members</th><th>Next Payment Due</th><th>${tr('th_status')}</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Organization</th><th>Plan</th><th>Status</th><th>Members</th><th>Next Due</th><th>Mode</th><th>Actions</th></tr></thead>
     <tbody>
       ${orgs.map(o=>{
         const status = o.subscriptionStatus || 'active';
@@ -12536,18 +12548,15 @@ function renderPlatformAdminTable(){
             </div>
           </td>
           <td style="text-transform:capitalize;">${escapeHtml(o.plan)}</td>
-          <td>${memberCount}</td>
-          <td>${o.nextPaymentDue ? fmtDate(o.nextPaymentDue) : '—'} ${dueDays!==null && dueDays<0 ? `<span class="pill pill-danger" style="margin-left:4px;">${Math.abs(dueDays)}d overdue</span>` : ''}</td>
           <td><span class="pill ${meta.pill}">${meta.label}</span></td>
+          <td>${memberCount}</td>
+          <td>${o.nextPaymentDue ? fmtDate(o.nextPaymentDue) : '—'} ${dueDays!==null && dueDays<0 ? `<span class="pill pill-danger" style="margin-left:4px;">${Math.abs(dueDays)}d overdue</span>` : (dueDays!==null && dueDays<=3 ? `<span class="pill pill-warn" style="margin-left:4px;">${dueDays}d</span>` : '')}</td>
+          <td><span style="font-size:11px;padding:3px 8px;border-radius:6px;background:${(DB.subs&&DB.subs[o.id]&&DB.subs[o.id].auto_mode)?'var(--brand-soft)':'#F1F5F9'};color:${(DB.subs&&DB.subs[o.id]&&DB.subs[o.id].auto_mode)?'var(--brand)':'var(--ink-soft)'};">${(DB.subs&&DB.subs[o.id]&&DB.subs[o.id].auto_mode)?'Auto':'Manual'}</span></td>
           <td>
             <div style="display:flex; gap:6px; align-items:center;">
-              <select onchange="updateOrgSubscriptionStatus('${o.id}', this.value)" style="padding:6px 8px; border:1.5px solid var(--line); border-radius:7px; font-size:12.5px;">
-                <option value="active" ${status==='active'?'selected':''}>Active</option>
-                <option value="reminder" ${status==='reminder'?'selected':''}>Reminder</option>
-                <option value="notice" ${status==='notice'?'selected':''}>Notice</option>
-                <option value="suspended" ${status==='suspended'?'selected':''}>Suspended</option>
-              </select>
-              <button class="btn-icon btn-ghost" onclick="openSetPaymentDueModal('${o.id}')" title="Set next payment due date">${icon('calendar')}</button>
+              <button class="btn btn-primary btn-sm" onclick="openSubscriptionModal('${o.id}')" style="font-size:12px;padding:5px 12px;">Manage</button>
+              <button class="btn btn-secondary btn-sm" onclick="openBillingHistory('${o.id}')" style="font-size:12px;padding:5px 12px;">History</button>
+              <button class="btn-icon btn-ghost" onclick="sendWhatsAppReminder('${o.id}')" title="Send WhatsApp reminder">${icon('whatsapp')}</button>
             </div>
           </td>
         </tr>
@@ -12601,6 +12610,297 @@ async function savePaymentDue(orgId){
   closeModal('paymentDueBackdrop');
   renderPlatformAdminTable();
   toast('Payment due date updated', 'success');
+}
+
+/* ============================================================
+   SUBSCRIPTION MANAGEMENT FUNCTIONS
+   ============================================================ */
+
+// ---- Plan pricing map ----
+const PLAN_PRICES = {
+  starter:  { monthly: 149, yearly: 1490 },
+  growth:   { monthly: 399, yearly: 3990 },
+  enterprise:{ monthly: 999, yearly: 9990 },
+  trial:    { monthly: 0,   yearly: 0 },
+};
+
+// ---- Open full subscription modal ----
+function openSubscriptionModal(orgId){
+  const org = DB.orgs[orgId];
+  const sub = DB.subs ? DB.subs[orgId] : null;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'subModal';
+  const plan = sub ? sub.plan : (org.plan || 'trial');
+  const cycle = sub ? sub.billing_cycle : 'monthly';
+  const status = sub ? sub.status : (org.subscriptionStatus || 'trial');
+  const nextDue = sub ? sub.next_due_at : org.nextPaymentDue;
+  const amount = sub ? sub.amount : (PLAN_PRICES[plan] ? PLAN_PRICES[plan][cycle] : 0);
+  const autoMode = sub ? sub.auto_mode : false;
+
+  backdrop.innerHTML = `
+    <div class="modal" style="max-width:540px;">
+      <div class="modal-header">
+        <h3>${escapeHtml(org.name)} — Subscription</h3>
+        <button class="btn-icon btn-ghost" onclick="closeModal('subModal')">${icon('close')}</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field">
+            <label>Plan</label>
+            <select id="subPlan" onchange="updateSubAmount()">
+              <option value="trial" ${plan==='trial'?'selected':''}>Trial</option>
+              <option value="starter" ${plan==='starter'?'selected':''}>Starter — RM149/mo</option>
+              <option value="growth" ${plan==='growth'?'selected':''}>Growth — RM399/mo</option>
+              <option value="enterprise" ${plan==='enterprise'?'selected':''}>Enterprise — RM999/mo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Billing Cycle</label>
+            <select id="subCycle" onchange="updateSubAmount()">
+              <option value="monthly" ${cycle==='monthly'?'selected':''}>Monthly</option>
+              <option value="yearly" ${cycle==='yearly'?'selected':''}>Yearly (save 2 months)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field">
+            <label>Status</label>
+            <select id="subStatus">
+              <option value="trial" ${status==='trial'?'selected':''}>Trial</option>
+              <option value="active" ${status==='active'?'selected':''}>Active</option>
+              <option value="past_due" ${status==='past_due'?'selected':''}>Past Due</option>
+              <option value="suspended" ${status==='suspended'?'selected':''}>Suspended</option>
+              <option value="cancelled" ${status==='cancelled'?'selected':''}>Cancelled</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Amount (MYR)</label>
+            <input type="number" id="subAmount" value="${amount}" placeholder="0.00">
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field">
+            <label>Next Due Date</label>
+            <input type="date" id="subNextDue" value="${nextDue ? nextDue.slice(0,10) : ''}">
+          </div>
+          <div class="field">
+            <label>Payment Method</label>
+            <select id="subPayMethod">
+              <option value="">— Select —</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="cheque">Cheque</option>
+              <option value="billplz">Billplz</option>
+              <option value="stripe">Stripe</option>
+              <option value="cash">Cash</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Payment Reference / Notes</label>
+          <input type="text" id="subPayRef" placeholder="e.g. TXN123456 or memo">
+        </div>
+
+        <div style="background:var(--brand-soft);border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-weight:600;font-size:14px;">Automation Mode</div>
+            <div style="font-size:12px;color:var(--ink-soft);margin-top:2px;">Auto-send reminders & suspend on non-payment</div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <div style="position:relative;">
+              <input type="checkbox" id="subAutoMode" ${autoMode?'checked':''} style="opacity:0;width:0;height:0;">
+              <div id="subAutoToggle" onclick="toggleAutoMode()" style="width:44px;height:24px;background:${autoMode?'var(--brand)':'#CBD5E1'};border-radius:12px;cursor:pointer;transition:background .2s;position:relative;">
+                <div style="position:absolute;top:2px;left:${autoMode?'22':'2'}px;width:20px;height:20px;background:#fff;border-radius:50%;transition:left .2s;"></div>
+              </div>
+            </div>
+            <span style="font-size:13px;font-weight:600;">${autoMode ? 'Auto' : 'Manual'}</span>
+          </label>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="justify-content:space-between;">
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" onclick="sendWhatsAppReminder('${orgId}')" title="Send WhatsApp reminder">${icon('whatsapp')} WhatsApp</button>
+          <button class="btn btn-danger" onclick="confirmSuspend('${orgId}')" style="background:#FEF2F2;color:#DC2626;border-color:#FECACA;">Suspend</button>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" onclick="closeModal('subModal')">Cancel</button>
+          <button class="btn btn-primary" onclick="saveSubscription('${orgId}')">Save & Mark Paid</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+}
+
+function updateSubAmount(){
+  const plan = document.getElementById('subPlan').value;
+  const cycle = document.getElementById('subCycle').value;
+  const prices = PLAN_PRICES[plan];
+  if(prices) document.getElementById('subAmount').value = prices[cycle];
+}
+
+function toggleAutoMode(){
+  const cb = document.getElementById('subAutoMode');
+  cb.checked = !cb.checked;
+  const toggle = document.getElementById('subAutoToggle');
+  toggle.style.background = cb.checked ? 'var(--brand)' : '#CBD5E1';
+  toggle.querySelector('div').style.left = cb.checked ? '22px' : '2px';
+  toggle.nextElementSibling.textContent = cb.checked ? 'Auto' : 'Manual';
+}
+
+async function saveSubscription(orgId){
+  const plan = document.getElementById('subPlan').value;
+  const cycle = document.getElementById('subCycle').value;
+  const status = document.getElementById('subStatus').value;
+  const amount = parseFloat(document.getElementById('subAmount').value) || 0;
+  const nextDue = document.getElementById('subNextDue').value;
+  const payMethod = document.getElementById('subPayMethod').value;
+  const payRef = document.getElementById('subPayRef').value.trim();
+  const autoMode = document.getElementById('subAutoMode').checked;
+  const now = new Date().toISOString();
+
+  // Calculate period end
+  const periodStart = now;
+  const periodEnd = nextDue ? new Date(nextDue).toISOString() : null;
+
+  if(SESSION && SESSION.mode === 'supabase'){
+    // Upsert subscription
+    const { data: existing } = await sb.from('subscriptions').select('id').eq('org_id', orgId).single();
+    if(existing){
+      await sb.from('subscriptions').update({
+        plan, billing_cycle: cycle, status, amount,
+        next_due_at: periodEnd,
+        current_period_start: status === 'active' ? periodStart : null,
+        current_period_end: periodEnd,
+        last_paid_at: status === 'active' ? now : null,
+        auto_mode: autoMode,
+        reminder_3day_sent: false,
+        reminder_14day_sent: false,
+        suspended_at: status === 'suspended' ? now : null,
+      }).eq('org_id', orgId);
+    } else {
+      await sb.from('subscriptions').insert({
+        org_id: orgId, plan, billing_cycle: cycle, status, amount,
+        next_due_at: periodEnd, current_period_start: periodStart,
+        current_period_end: periodEnd, last_paid_at: status === 'active' ? now : null,
+        auto_mode: autoMode,
+      });
+    }
+
+    // Update org plan + status
+    await sb.from('orgs').update({
+      plan, subscription_status: status,
+      next_payment_due: periodEnd,
+    }).eq('id', orgId);
+
+    // Log billing history if marking as paid
+    if(status === 'active' && amount > 0){
+      const invoiceNum = 'NXR-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-4);
+      await sb.from('billing_history').insert({
+        org_id: orgId, amount, currency: 'MYR', plan, billing_cycle: cycle,
+        status: 'paid', paid_at: now, due_date: periodEnd,
+        payment_method: payMethod || null,
+        payment_ref: payRef || null,
+        invoice_number: invoiceNum,
+      });
+    }
+  }
+
+  // Update local DB
+  if(DB.orgs[orgId]){
+    DB.orgs[orgId].plan = plan;
+    DB.orgs[orgId].subscriptionStatus = status;
+    DB.orgs[orgId].nextPaymentDue = periodEnd;
+  }
+
+  closeModal('subModal');
+  renderPlatformAdminStats();
+  renderPlatformAdminTable();
+  toast(DB.orgs[orgId].name + ' subscription updated ✓', 'success');
+}
+
+function confirmSuspend(orgId){
+  const org = DB.orgs[orgId];
+  if(!confirm('Suspend ' + org.name + '? They will lose access until reactivated.')) return;
+  updateOrgSubscriptionStatus(orgId, 'suspended');
+  closeModal('subModal');
+}
+
+function sendWhatsAppReminder(orgId){
+  const org = DB.orgs[orgId];
+  const due = org.nextPaymentDue ? new Date(org.nextPaymentDue).toLocaleDateString('en-MY') : 'soon';
+  const planLabel = (org.plan || 'Starter').charAt(0).toUpperCase() + (org.plan || 'starter').slice(1);
+  const prices = PLAN_PRICES[org.plan || 'starter'];
+  const amount = prices ? prices.monthly : 149;
+  const nl = String.fromCharCode(10);
+  const msg = encodeURIComponent(
+    'Hi ' + org.name + ',' + nl + nl +
+    'This is a reminder that your Nexora subscription (' + planLabel + ' Plan) is due on ' + due + '.' + nl + nl +
+    'Amount: RM ' + amount + '/month' + nl +
+    'Bank Transfer:' + nl +
+    'Bank: Maybank' + nl +
+    'Account Name: [Your Company Name]' + nl +
+    'Account No: [Your Account No]' + nl + nl +
+    'Please use your organization name as the payment reference.' + nl + nl +
+    'Thank you!' + nl + 'Nexora Team'
+  );
+  window.open('https://wa.me/?text=' + msg, '_blank');
+}
+
+// ---- View billing history modal ----
+async function openBillingHistory(orgId){
+  const org = DB.orgs[orgId];
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.id = 'billingModal';
+
+  let rows = '<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);padding:20px;">Loading...</td></tr>';
+
+  backdrop.innerHTML = `
+    <div class="modal" style="max-width:700px;">
+      <div class="modal-header">
+        <h3>${escapeHtml(org.name)} — Billing History</h3>
+        <button class="btn-icon btn-ghost" onclick="closeModal('billingModal')">${icon('close')}</button>
+      </div>
+      <div class="modal-body" style="padding:0;">
+        <table class="data-table" style="margin:0;">
+          <thead><tr><th>Invoice</th><th>Plan</th><th>Amount</th><th>Status</th><th>Due</th><th>Paid</th></tr></thead>
+          <tbody id="billingRows">${rows}</tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('billingModal')">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  // Load billing history
+  if(SESSION && SESSION.mode === 'supabase'){
+    const { data } = await sb.from('billing_history').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).limit(20);
+    const tbody = document.getElementById('billingRows');
+    if(!data || data.length === 0){
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);padding:20px;">No billing records yet</td></tr>';
+    } else {
+      tbody.innerHTML = data.map(b => `
+        <tr>
+          <td style="font-family:monospace;font-size:12px;">${b.invoice_number || '—'}</td>
+          <td style="text-transform:capitalize;">${b.plan || '—'} / ${b.billing_cycle || '—'}</td>
+          <td>RM ${parseFloat(b.amount).toFixed(2)}</td>
+          <td><span class="pill ${b.status==='paid'?'pill-success':b.status==='pending'?'pill-warn':'pill-danger'}">${b.status}</span></td>
+          <td>${b.due_date ? new Date(b.due_date).toLocaleDateString('en-MY') : '—'}</td>
+          <td>${b.paid_at ? new Date(b.paid_at).toLocaleDateString('en-MY') : '—'}</td>
+        </tr>
+      `).join('');
+    }
+  } else {
+    document.getElementById('billingRows').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);padding:20px;">Connect Supabase to view billing history</td></tr>';
+  }
 }
 
 /* ============================================================
