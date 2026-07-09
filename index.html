@@ -10350,16 +10350,20 @@ tbody tr:hover{ background:var(--line-soft); }
 
 // Global error handler - shows error on page instead of blank white screen
 window.onerror = function(msg, src, line, col, err){
-  console.error('Global error:', msg, src, line);
+  console.error('Global error:', msg, src, line, err);
+  // Show error screen if app hasn't loaded yet
   const el = document.getElementById('view-landing');
-  if(el && el.innerHTML.includes('Loading')){
-    el.innerHTML = `<div style="font-family:Inter,sans-serif;padding:40px;text-align:center;color:#14171F;">
-      <div style="font-size:48px;margin-bottom:16px;">⚠️</div>
-      <h2 style="margin-bottom:8px;">Something went wrong</h2>
-      <p style="color:#6B7280;margin-bottom:20px;">Please try refreshing the page.</p>
-      <button onclick="location.reload()" style="background:#5B4FE8;color:#fff;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-size:15px;">Refresh</button>
-      <details style="margin-top:20px;text-align:left;color:#6B7280;font-size:12px;"><summary>Error details</summary><pre>${msg}\n${src}:${line}</pre></details>
-    </div>`;
+  const appLoaded = document.getElementById('view-dashboard') && 
+    document.getElementById('view-dashboard').classList.contains('active');
+  if(el && !appLoaded){
+    el.innerHTML = '<div style="font-family:Inter,sans-serif;padding:40px;text-align:center;color:#14171F;">'
+      + '<div style="font-size:48px;margin-bottom:16px;">⚠️</div>'
+      + '<h2 style="margin-bottom:8px;">Something went wrong</h2>'
+      + '<p style="color:#6B7280;margin-bottom:20px;">Please try refreshing the page.</p>'
+      + '<button onclick="location.reload()" style="background:#5B4FE8;color:#fff;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-size:15px;">Refresh</button>'
+      + '<details style="margin-top:20px;text-align:left;color:#6B7280;font-size:12px;"><summary>Error details</summary>'
+      + '<pre style="white-space:pre-wrap;">' + msg + '\n' + src + ':' + line + '</pre></details></div>';
+    el.classList.add('active');
   }
   return false;
 };
@@ -18091,9 +18095,19 @@ function initSupabase(){
 }
 
 function startApp(){
-  initSupabase();
-  const result = initApp();
-  if(result && result.catch) result.catch(function(e){ console.error('initApp error:', e); });
+  try {
+    initSupabase();
+    const result = initApp();
+    if(result && result.catch){
+      result.catch(function(e){
+        console.error('initApp async error:', e);
+        window.onerror(e.message || String(e), 'initApp', 0, 0, e);
+      });
+    }
+  } catch(e) {
+    console.error('startApp crash:', e);
+    window.onerror(e.message || String(e), 'startApp', 0, 0, e);
+  }
 }
 
 if(document.readyState === 'loading'){
